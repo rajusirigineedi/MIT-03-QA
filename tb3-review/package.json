@@ -1,0 +1,18 @@
+{
+  "name": "tb3-review",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Read-only evidence pipeline for Terminal Bench 3.0 task review",
+  "scripts": {
+    "tb3": "node --experimental-strip-types --no-warnings src/cli.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "smol-toml": "^1.8.0"
+  }
+}

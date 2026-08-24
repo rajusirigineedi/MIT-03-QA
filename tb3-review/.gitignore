@@ -1,0 +1,13 @@
+node_modules/
+.env
+.env.local
+
+# Mirrored task evidence and generated reviews. Never commit: contains
+# unreleased benchmark tasks and their reference solutions.
+tasks/
+out/
+*.tar.gz
+
+# Downloaded task packages
+inbox/*
+!inbox/README.md

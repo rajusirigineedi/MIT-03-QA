@@ -1,4 +1,4 @@
-# tb3-review
+# code-review
 
 Offline review pipeline for Terminal Bench 3.0 tasks.
 

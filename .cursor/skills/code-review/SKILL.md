@@ -1,5 +1,5 @@
 ---
-name: tb3-review
+name: code-review
 description: Reviews a Terminal Bench 3.0 (TB3) task package against the 49 review rubrics, auditing AutoQA verdicts and the Reviewer Agent verdict for claims their own evidence does not support, and drafting per-criterion notes for manual entry. Use when reviewing a TB3 task, a downloaded review package, a batch_prod_*__* folder, or when the user mentions TB3, Terminal Bench, AutoQA, TuringQA, review-session JSON, or the reviewer portal.
 disable-model-invocation: true
 ---
@@ -33,10 +33,10 @@ there must not be.
 ### 1. Build the evidence dossier
 
 ```bash
-cd tb3-review && npm run tb3 -- dossier inbox/<package-or-parent>
+cd code-review && npm run tb3 -- dossier inbox/<package-or-parent>
 ```
 
-Writes `tb3-review/out/<task>.dossier.md`: measured facts, per-trial durations
+Writes `code-review/out/<task>.dossier.md`: measured facts, per-trial durations
 against the configured budgets, what actually failed in each failing trial, every
 task source file inline, and the 49 criteria grouped by the evidence they need —
 each with the rubric intent, AutoQA's verdict and reasoning, and a recipe for
@@ -82,13 +82,13 @@ The two directions that catch the most:
 ### 3. Run the audit as a cross-check
 
 ```bash
-cd tb3-review && npm run tb3 -- analyze inbox/<package-or-parent>
+cd code-review && npm run tb3 -- analyze inbox/<package-or-parent>
 ```
 
 This pass judges AutoQA's paperwork rather than the task: it flags verdicts whose
 stated reasoning cannot support them, and contradictions between AutoQA, the
 Reviewer Agent, and recorded trial outcomes. Writes
-`tb3-review/out/<task>.review.md`.
+`code-review/out/<task>.review.md`.
 
 Use it to catch what you missed in step 2, not as a substitute for it. A flag is
 a claim about the *evidence*, never a verdict on the task.
@@ -206,7 +206,7 @@ Highest-value flags, in order:
 5. `measured-near-miss` — a failure by a tiny numeric margin
 6. `absence-based-pass` — passing only because nothing flagged it
 
-`tb3-review/README.md` lists every rule.
+`code-review/README.md` lists every rule.
 
 ## Package layout
 
@@ -248,6 +248,6 @@ jq -r '.steps | length' agent/trajectory.json
 
 ## Reference
 
-- `tb3-review-workflow.md` — the full review process
-- `tb3-review/README.md` — audit rules and package structure
+- `code-review-workflow.md` — the full review process
+- `code-review/README.md` — audit rules and package structure
 - `npm run tb3 -- rubrics` — all 49 rubrics, ids, and how each is decided

@@ -1,10 +1,10 @@
 Review the TB3 task package named in my message, or the newest one under
-`tb3-review/inbox/` if I did not name one.
+`code-review/inbox/` if I did not name one.
 
-Follow the `tb3-review` skill. In short:
+Follow the `code-review` skill. In short:
 
-1. Run `cd tb3-review && npm run tb3 -- dossier inbox/<package>` and read the
-   generated dossier in `tb3-review/out/`.
+1. Run `cd code-review && npm run tb3 -- dossier inbox/<package>` and read the
+   generated dossier in `code-review/out/`.
 2. Decide all 49 criteria yourself from the evidence in it, working one batch at
    a time. Do not start from AutoQA's verdict — reach your own, then compare.
 3. Run `npm run tb3 -- analyze inbox/<package>` as a cross-check and verify every

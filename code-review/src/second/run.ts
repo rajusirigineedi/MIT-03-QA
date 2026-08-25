@@ -81,7 +81,7 @@ export async function runDossier(inputPath: string): Promise<number> {
     `size:    ${(dossier.length / 1024).toFixed(0)} KB, ~${Math.round(dossier.length / 4000)}k tokens`,
   );
   console.log('');
-  console.log('Next: read the dossier and produce the 49-row verdict table.');
+  console.log('Next: review all 49 criteria in the dossier\'s six evidence groups.');
 
   return 0;
 }

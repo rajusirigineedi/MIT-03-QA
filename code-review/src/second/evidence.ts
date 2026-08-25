@@ -10,50 +10,61 @@
 
 import { RUBRICS, type Cluster, type Rubric } from '../rubrics/rubrics.ts';
 
-export type Batch = 'contract' | 'verifier' | 'difficulty' | 'hygiene' | 'budget';
+export type Batch =
+  | 'oracle'
+  | 'verifier'
+  | 'fairness'
+  | 'difficulty'
+  | 'hygiene'
+  | 'docs';
 
 export const BATCH_ORDER: Batch[] = [
+  'oracle',
   'verifier',
-  'contract',
+  'fairness',
   'difficulty',
-  'budget',
   'hygiene',
+  'docs',
 ];
 
 export const BATCH_TITLE: Record<Batch, string> = {
-  verifier: 'Oracle and verifier mechanics',
-  contract: 'Contract, coverage, and grading fairness',
+  oracle: 'Solvability and oracle honesty',
+  verifier: 'Verifier strength',
+  fairness: 'Grading fairness',
   difficulty: 'Difficulty and realism',
-  budget: 'Time and resource budgets',
-  hygiene: 'Hygiene, metadata, and documentation',
+  hygiene: 'Cleanliness and determinism',
+  docs: 'Documentation and safety',
 };
 
 export const BATCH_READS: Record<Batch, string> = {
+  oracle:
+    'reviewer-working-copy/solution, verifier tests, dossier measured rewards and timing',
   verifier:
-    'tests/test_outputs.py, tests/test.sh, solution/, measured rewards per trial',
-  contract:
-    'instruction.md read against tests/test_outputs.py, plus failing assertions',
+    'reviewer-working-copy/tests and environment, dossier NOP result, selected trial results',
+  fairness:
+    'reviewer-working-copy/instruction.md read against tests, plus selected failing assertions',
   difficulty:
-    'instruction.md, task.toml difficulty_explanation, agent trajectories',
-  budget: 'task.toml budgets against measured per-phase trial durations',
-  hygiene: 'task.toml, Dockerfiles, repository file listing',
+    'reviewer-working-copy/instruction.md, task.toml difficulty_explanation, selected trial outputs',
+  hygiene:
+    'reviewer-working-copy/task.toml, Dockerfiles, file listing, dossier timing',
+  docs:
+    'reviewer-working-copy/instruction.md, task.toml explanations, README',
 };
 
 /** Criteria whose natural batch differs from their cluster's default. */
 const BATCH_OVERRIDE: Record<string, Batch> = {
-  solvable_reasonable_time: 'budget',
-  resources_appropriate: 'budget',
-  low_timeout: 'budget',
+  resources_appropriate: 'hygiene',
+  low_timeout: 'hygiene',
 };
 
 const CLUSTER_BATCH: Record<Cluster, Batch> = {
-  oracle: 'verifier',
+  oracle: 'oracle',
   verifier: 'verifier',
-  fairness: 'contract',
-  specification: 'contract',
+  fairness: 'fairness',
+  specification: 'fairness',
   difficulty: 'difficulty',
   hygiene: 'hygiene',
-  docs: 'hygiene',
+  docs: 'docs',
 };
 
 /**
@@ -63,13 +74,13 @@ const CLUSTER_BATCH: Record<Cluster, Batch> = {
 const RECIPE: Record<string, string> = {
   // Verifier strength
   no_false_positives:
-    'Look for a wrong solution the tests would still pass. Walk each assertion and ask what it does NOT constrain: expected values hardcoded where the agent could read them out of the test file, checks on row counts but not row contents, format checks that never verify the computation, assertions on a sample where the whole output matters. Conclude with either a concrete passing-but-wrong strategy, or the specific assertion that blocks each bypass you considered.',
+    'Check every test and assertion. For each one, ask what incorrect result could still satisfy it. Look for hardcoded expected values, row-count checks without content checks, format checks without computation checks, and samples that ignore the full output. Do not report none until every assertion is checked. Conclude with a concrete passing-but-wrong strategy and exact test lines, or the assertion that blocks each bypass considered.',
   no_false_negatives:
-    'Look for a correct solution the tests would still fail. Check assertions for over-specification: exact float equality, dict or list ordering, whitespace and trailing-newline sensitivity, one arbitrary spelling of an output the instruction leaves open. Then read the actual failing assertions from the trials and decide, per failure, whether the agent was wrong or the test was.',
+    'Check every test and assertion. For each one, ask what correct result it could reject. Look for exact float equality, ordering, whitespace, trailing-newline sensitivity, and one arbitrary spelling where the instruction permits more than one. Do not report none until every assertion is checked. Cite the exact assertion and instruction line for each concrete correct-but-rejected result.',
   tests_resist_shortcuts:
     'Ask what the cheapest way to satisfy each assertion is. Check whether test files, expected outputs, or the solution are reachable from the agent workspace, and whether any assertion can be satisfied by echoing a constant.',
   anti_cheat_robustness:
-    'Given the assertions, name the cheapest bypass you would attempt, then confirm the recorded cheat trial actually exercised that bypass. A cheat trial that tried something else does not clear this.',
+    'Given the assertions, name the cheapest bypass you would attempt. Check whether the tests block it and whether the dossier records a measured anti-cheat result. Do not infer what an unexported trial attempted.',
   reward_hacking:
     'Trace how the reward is produced end to end, and look for a path that raises it without solving the task: writing the reward file directly, influencing the verifier from the agent container, or exiting in a way that skips assertions.',
   noop_fails_verifier:
@@ -77,7 +88,7 @@ const RECIPE: Record<string, string> = {
   task_solvability:
     'Confirm the oracle reward is exactly 1.0 in a real recorded run rather than asserted.',
   reward_file_correct:
-    'Check when the reward file is written relative to the assertions. Any write before tests complete, or any default value that survives a test failure, is a defect.',
+    'Read test.sh in execution order. A reward written before pytest is a hard fail because it can hide AgentTimeoutError. If set -e is active at pytest, require set +e or another construct that captures failure so reward.txt is still written. Confirm reward.txt is written before the final exit. Both exit 0 and the captured pytest code are acceptable after the reward write. Cite the pytest, reward-write, and exit lines.',
   separate_verifier_container:
     'Confirm the verifier builds and runs separately from the agent environment, and that it receives only the intended artifacts.',
   solution_derives_answer:
@@ -105,11 +116,11 @@ const RECIPE: Record<string, string> = {
   failure_is_agent_fault:
     'For each failing trial, separate agent error from infrastructure error. Setup failures, missing dependencies, and container problems are not the agent\'s fault and must not be graded as difficulty.',
   input_artifacts_real:
-    'Confirm the declared input data actually contains the conditions the task claims. If the instruction promises specific defects or edge cases, verify they are present in the input.',
+    'Check names, paths, sizes, and schemas first. Do not load data or input files by default. If a claimed defect or edge case cannot be verified otherwise, state the exact question and inspect the smallest bounded sample or structured query needed to answer it.',
 
   // Difficulty
   genuinely_difficult:
-    'Decide where the difficulty actually lives: reasoning and diagnosis, or clerical volume. Read a trajectory and see what the agent spent its effort on.',
+    'Decide where the difficulty actually lives: reasoning and diagnosis, or clerical volume. Compare the selected failing assertions with the task\'s stated challenge.',
   difficulty_crux:
     'Identify the intended conceptual crux, then read what the failing agents actually got wrong. The criterion holds only when those coincide.',
   near_misses:
@@ -117,11 +128,11 @@ const RECIPE: Record<string, string> = {
   non_clericalness:
     'Judge whether the work is hard to reason about or merely long. Volume of repetitive edits is clerical difficulty and does not count.',
   core_challenge_is_problem:
-    'Check whether the agents\' effort went to the intended domain problem or to formatting, plumbing, and environment accidents.',
+    'Check whether the selected failures occurred on the intended domain problem or on formatting, plumbing, and environment accidents.',
   not_memorizable:
     'Ask whether a model could produce the answer from recall. Well-known problems with fixed published answers fail this.',
   refusals:
-    'Scan trajectories for refusal or bail-out patterns, then decide whether they point to a task or instruction defect rather than model behaviour.',
+    'Check selected verifier output for explicit refusal or bail-out evidence. If the prepared evidence contains none, do not infer unseen agent behaviour.',
   expert_time_estimate_plausible:
     'Compare the declared estimate against the work the solution actually requires and what the trials took.',
 

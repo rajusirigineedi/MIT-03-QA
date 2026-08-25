@@ -26,21 +26,36 @@ both into `inbox/`, then:
 ```bash
 npm run tb3 -- dossier inbox    # evidence to judge all 49 yourself
 npm run tb3 -- analyze inbox    # audit whether AutoQA's verdicts are supported
+npm run collect-trajectories -- inbox
+npm run copy-working-copy -- inbox
+npm run prepare-review -- inbox # run dossier and both copy commands
 ```
 
 The two passes answer different questions and are both needed.
 
 `dossier` writes `out/<task>.dossier.md`: measured facts, per-trial durations
-against the configured budgets, what actually failed in each failing trial, every
-task source file inline, and the 49 criteria grouped by the evidence they draw
-on — each with the rubric intent, AutoQA's verdict, and a recipe for deciding it
-independently. This is the input to the second-round review, which produces a
-verdict per criterion and an accept/reject of AutoQA's.
+against the configured budgets, what actually failed in each failing trial, and
+the 49 criteria grouped by the evidence they draw on. Task-file contents are not
+embedded. The command also copies `conclude/claude_skill_review.md` unchanged to
+`out/<task>.reviewer-agent-findings.md`.
 
 `analyze` writes `out/<task>.review.md`: flags for verdicts whose own reasoning
 cannot support them, and contradictions between AutoQA, the Reviewer Agent, and
 recorded trial outcomes. It judges the paperwork, not the task, so it is a
 cross-check on the second round rather than a replacement for it.
+
+`collect-trajectories` keeps one passing attempt per model and every failing
+attempt. It writes them under `out/<task>/trajectories/`, with names such as
+`attempt_01-pass` and `attempt_03-fail`. Each selected attempt contains
+`verifier/test-stdout.txt`, `verifier/reward.txt`, and a reduced `result.json`
+with only `agent_result` and `verifier_result`. It does not copy
+`agent/trajectory.json`.
+
+`copy-working-copy` copies the package's `reviewer-working-copy/` directory to
+`out/<task>/reviewer-working-copy/`.
+
+`prepare-review` runs `dossier`, `collect-trajectories`, and
+`copy-working-copy` in sequence.
 
 ```bash
 npm run tb3 -- rubrics              # all 49 rubrics and how each is decided
@@ -76,9 +91,8 @@ not a reviewable card, and `readme_provides_context` is a card with no verdict.
 ## Why two passes
 
 The second round is the review: reach an independent verdict on all 49 and then
-say whether AutoQA's was right. `dossier` exists to make that affordable — the
-evidence is assembled once, grouped so each file is read once, with the measured
-numbers already computed.
+say whether AutoQA's was right. `dossier` collects the recorded findings and
+measured numbers without duplicating the task files.
 
 The audit pass is narrower and complementary. It catches a failure mode the
 second round can miss: a verdict that happens to be *correct* while resting on no

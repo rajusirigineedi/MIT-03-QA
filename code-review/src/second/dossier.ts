@@ -2,18 +2,12 @@
  * Builds the evidence dossier for an independent second-round review.
  *
  * The audit report answers "did AutoQA show its work?". This answers the prior
- * question: it puts everything needed to decide all 49 criteria from scratch
- * into one document, grouped so each source is read once, with AutoQA's claim
- * placed next to the evidence that would confirm or refute it.
- *
- * Data files are sampled rather than inlined; a 40k-row fixture contributes
- * nothing to a judgement that its head and row count do not.
+ * question: it collects the 49 AutoQA criteria and recorded trial facts without
+ * embedding the task files themselves.
  */
 
 import type { Session, Verdict } from '../package/session.ts';
 import type { TrialIndex } from '../package/trials.ts';
-import type { TaskCorpus } from '../package/taskfiles.ts';
-import type { ReviewerAgent } from '../package/reviewerAgent.ts';
 import type { TrialFailure } from '../audit/nearmiss.ts';
 import type { TimingReport } from './timing.ts';
 import { summarizeTiming } from './timing.ts';
@@ -25,39 +19,16 @@ import {
 } from './evidence.ts';
 import { RUBRICS } from '../rubrics/rubrics.ts';
 
-/** Source files worth reading in full, in the order a reviewer wants them. */
-const SOURCE_ORDER = [
-  'instruction.md',
-  'task.toml',
-  'tests/test_outputs.py',
-  'tests/test.sh',
-  'tests/run-tests.sh',
-  'tests/Dockerfile',
-  'solution/solve.sh',
-  'environment/Dockerfile',
-  'README.md',
-];
-
-const DATA_EXT = /\.(jsonl|json|csv|tsv|txt|ndjson|parquet|db|sqlite)$/i;
-
-/** Per-file inline cap. Beyond this a file is sampled. */
-const MAX_LINES = 500;
-/** Rows shown from a data file. */
-const SAMPLE_ROWS = 6;
-
 export interface DossierInput {
   slug: string;
   session: Session;
   trials: TrialIndex;
-  corpus: TaskCorpus | null;
   timing: TimingReport;
   failures: TrialFailure[];
-  reviewerAgent: ReviewerAgent | null;
 }
 
 export function renderDossier(input: DossierInput): string {
-  const { slug, session, trials, corpus, timing, failures, reviewerAgent } =
-    input;
+  const { slug, session, trials, timing, failures } = input;
   const out: string[] = [];
 
   out.push(`# Second-round review dossier — ${slug}`);
@@ -71,9 +42,7 @@ export function renderDossier(input: DossierInput): string {
   out.push(...measuredFacts(session, trials, timing));
   out.push(...trialTable(timing));
   out.push(...failureEvidence(failures));
-  out.push(...taskFiles(corpus));
   out.push(...criteriaSections(session));
-  out.push(...reviewerAgentSection(reviewerAgent));
   out.push(...outputContract());
 
   return out.join('\n');
@@ -121,8 +90,8 @@ function trialTable(timing: TimingReport): string[] {
   for (const t of timing.trials) {
     out.push(
       `| ${t.model} | ${t.attempt} | ${t.solved ? 'yes' : 'no'} | ` +
-        `${sec(t.agentExecutionSec)} | ${pct(t.agentBudgetUsed)} | ` +
-        `${sec(t.verifierSec)} | ${pct(t.verifierBudgetUsed)} |`,
+      `${sec(t.agentExecutionSec)} | ${pct(t.agentBudgetUsed)} | ` +
+      `${sec(t.verifierSec)} | ${pct(t.verifierBudgetUsed)} |`,
     );
   }
   out.push('');
@@ -167,7 +136,7 @@ function failureEvidence(failures: TrialFailure[]): string[] {
     for (const m of f.margins) {
       out.push(
         `- margin: got ${m.actual}, expected ${m.expected} ` +
-          `(off by ${(m.relative * 100).toFixed(2)}%) — \`${m.source}\``,
+        `(off by ${(m.relative * 100).toFixed(2)}%) — \`${m.source}\``,
       );
     }
     if (f.closest) {
@@ -175,58 +144,6 @@ function failureEvidence(failures: TrialFailure[]): string[] {
         `- closest miss: ${(f.closest.relative * 100).toFixed(2)}% off`,
       );
     }
-    out.push('');
-  }
-  return out;
-}
-
-function taskFiles(corpus: TaskCorpus | null): string[] {
-  if (!corpus) return ['## Task files', '', '_Task directory not found._', ''];
-
-  const out = ['## Task files', ''];
-  const seen = new Set<string>();
-
-  const ordered = [
-    ...SOURCE_ORDER.filter((p) => corpus.files.has(p)),
-    ...[...corpus.files.keys()]
-      .filter((p) => !SOURCE_ORDER.includes(p))
-      .sort(),
-  ];
-
-  for (const path of ordered) {
-    if (seen.has(path)) continue;
-    seen.add(path);
-    const content = corpus.files.get(path);
-    if (content === undefined) continue;
-
-    const lines = content.split('\n');
-    const isData = DATA_EXT.test(path) && lines.length > MAX_LINES;
-
-    const shown = isData
-      ? lines.slice(0, SAMPLE_ROWS)
-      : lines.slice(0, MAX_LINES);
-    const fence = fenceFor(content);
-
-    out.push(`### \`${path}\``);
-    out.push('');
-    if (isData) {
-      out.push(`_${lines.length} lines; first ${SAMPLE_ROWS} shown._`);
-      out.push('');
-    } else if (lines.length > MAX_LINES) {
-      out.push(`_${lines.length} lines; first ${MAX_LINES} shown._`);
-      out.push('');
-    }
-    out.push(fence + (isData ? '' : lang(path)));
-    out.push(...trimTrailing(shown));
-    out.push(fence);
-    out.push('');
-  }
-
-  const unread = [...corpus.paths].filter((p) => !corpus.files.has(p));
-  if (unread.length) {
-    out.push('### Files present but not inlined (binary or oversized)');
-    out.push('');
-    for (const p of unread.sort()) out.push(`- \`${p}\``);
     out.push('');
   }
   return out;
@@ -254,7 +171,7 @@ function criteriaSections(session: Session): string[] {
       const v = session.verdicts.get(rubric.id);
       out.push(
         `#### ${rubric.n}. ${rubric.title} \`${rubric.id}\`` +
-          (rubric.extraAttention ? ' — EXTRA ATTENTION' : ''),
+        (rubric.extraAttention ? ' — EXTRA ATTENTION' : ''),
       );
       out.push('');
       out.push(`- Intent: ${rubric.intent}`);
@@ -263,26 +180,6 @@ function criteriaSections(session: Session): string[] {
       out.push(`- Check independently: ${spec.check}`);
       out.push('');
     }
-  }
-  return out;
-}
-
-function reviewerAgentSection(ra: ReviewerAgent | null): string[] {
-  if (!ra) return [];
-  const out = ['## Reviewer Agent (third opinion, also unverified)', ''];
-  out.push(`- Overall verdict: **${ra.verdict}**`);
-  out.push(`- Signals: ${ra.verdictTable.length}`);
-  out.push('');
-  if (ra.annotations.length) {
-    out.push('Annotations:');
-    out.push('');
-    for (const a of ra.annotations) {
-      const body = [a.why_fair, a.derivation, a.comment]
-        .filter((s): s is string => Boolean(s))
-        .join(' — ');
-      out.push(`- ${a.test ?? a.file}: ${body || '_no detail_'}`);
-    }
-    out.push('');
   }
   return out;
 }
@@ -316,28 +213,6 @@ function quote(v: Verdict): string {
   return text.length > 600 ? `${text.slice(0, 600)}…` : text;
 }
 
-/** A fence longer than any backtick run in the content, so markdown survives. */
-function fenceFor(content: string): string {
-  let longest = 0;
-  for (const m of content.matchAll(/`+/g)) longest = Math.max(longest, m[0].length);
-  return '`'.repeat(Math.max(3, longest + 1));
-}
-
-function trimTrailing(lines: string[]): string[] {
-  const out = [...lines];
-  while (out.length && out[out.length - 1]!.trim() === '') out.pop();
-  return out;
-}
-
-function lang(path: string): string {
-  if (path.endsWith('.py')) return 'python';
-  if (path.endsWith('.sh')) return 'bash';
-  if (path.endsWith('.toml')) return 'toml';
-  if (path.endsWith('.md')) return 'markdown';
-  if (path.endsWith('.json')) return 'json';
-  if (path.toLowerCase().includes('dockerfile')) return 'dockerfile';
-  return '';
-}
 
 function sec(v: number | null): string {
   return v === null ? '?' : `${v.toFixed(0)}s`;

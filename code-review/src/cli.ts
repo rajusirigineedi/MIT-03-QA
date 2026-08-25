@@ -20,6 +20,11 @@ Commands:
   rubrics [--cluster=x]   List the 49 rubrics and how each one is decided
   analyze <path>          Audit whether AutoQA's 49 verdicts are supported
   dossier <path>          Assemble the evidence to judge all 49 independently
+  collect-trajectories <path>
+                          Copy compact per-attempt evidence to out/<task>/trajectories
+  copy-working-copy <path>
+                          Copy reviewer-working-copy to out/<task>/reviewer-working-copy
+  prepare-review <path>   Run dossier, trajectory, and working-copy exports
   help
 
 Clusters: oracle, verifier, fairness, specification, difficulty, hygiene, docs
@@ -46,14 +51,14 @@ async function main(argv: string[]): Promise<number> {
       for (const r of rows) {
         console.log(
           `${String(r.n).padStart(2)}. ${r.title}${r.extraAttention ? ' *' : ''}\n` +
-            `    id=${r.id}  cluster=${r.cluster}  decided-by=${r.decidable}`,
+          `    id=${r.id}  cluster=${r.cluster}  decided-by=${r.decidable}`,
         );
       }
       const counts = tally(rows.map((r) => r.decidable));
       console.log(
         `\n${rows.length} rubrics — ` +
-          Object.entries(counts).map(([k, v]) => `${v} ${k}`).join(', ') +
-          `; ${rows.filter((r) => r.extraAttention).length} need extra attention (*)`,
+        Object.entries(counts).map(([k, v]) => `${v} ${k}`).join(', ') +
+        `; ${rows.filter((r) => r.extraAttention).length} need extra attention (*)`,
       );
       return 0;
     }
@@ -76,6 +81,45 @@ async function main(argv: string[]): Promise<number> {
       }
       const { runDossier } = await import('./second/run.ts');
       return runDossier(path);
+    }
+
+    case 'collect-trajectories': {
+      const path = rest.find((a) => !a.startsWith('-'));
+      if (!path) {
+        console.error('collect-trajectories needs a package or trajectories path.');
+        return 1;
+      }
+      const { collectTrajectories } = await import('./export/trajectories.ts');
+      return collectTrajectories(path);
+    }
+
+    case 'copy-working-copy': {
+      const path = rest.find((a) => !a.startsWith('-'));
+      if (!path) {
+        console.error('copy-working-copy needs a path to a downloaded task package.');
+        return 1;
+      }
+      const { copyWorkingCopy } = await import('./export/workingCopy.ts');
+      return copyWorkingCopy(path);
+    }
+
+    case 'prepare-review': {
+      const path = rest.find((a) => !a.startsWith('-'));
+      if (!path) {
+        console.error('prepare-review needs a path to a downloaded task package.');
+        return 1;
+      }
+
+      const { runDossier } = await import('./second/run.ts');
+      const { collectTrajectories } = await import('./export/trajectories.ts');
+      const { copyWorkingCopy } = await import('./export/workingCopy.ts');
+
+      for (const run of [runDossier, collectTrajectories, copyWorkingCopy]) {
+        const code = await run(path);
+        if (code !== 0) return code;
+        console.log('');
+      }
+      return 0;
     }
 
     default:

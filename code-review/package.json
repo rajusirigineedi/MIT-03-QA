@@ -6,6 +6,9 @@
   "description": "Read-only evidence pipeline for Terminal Bench 3.0 task review",
   "scripts": {
     "tb3": "node --experimental-strip-types --no-warnings src/cli.ts",
+    "collect-trajectories": "node --experimental-strip-types --no-warnings src/cli.ts collect-trajectories",
+    "copy-working-copy": "node --experimental-strip-types --no-warnings src/cli.ts copy-working-copy",
+    "prepare-review": "node --experimental-strip-types --no-warnings src/cli.ts prepare-review",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

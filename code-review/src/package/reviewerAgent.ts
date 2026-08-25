@@ -55,15 +55,8 @@ export interface ReviewerAgent {
 export async function loadReviewerAgent(
   packageDir: string,
 ): Promise<ReviewerAgent | null> {
-  const concludeDir = await findConcludeDir(packageDir);
-  if (!concludeDir) return null;
-
-  const mdName = (await safeReaddir(concludeDir)).find(
-    (n) => n.endsWith('.md') && n.includes('review'),
-  );
-  if (!mdName) return null;
-
-  const markdownPath = join(concludeDir, mdName);
+  const markdownPath = await findReviewerAgentMarkdown(packageDir);
+  if (!markdownPath) return null;
   const markdown = await readFile(markdownPath, 'utf8');
 
   const annotationsPath = markdownPath.replace(/\.md$/, '.annotations.json');
@@ -100,6 +93,16 @@ export async function loadReviewerAgent(
       m[1]!.trim(),
     ),
   };
+}
+
+export async function findReviewerAgentMarkdown(
+  packageDir: string,
+): Promise<string | null> {
+  const concludeDir = await findConcludeDir(packageDir);
+  if (!concludeDir) return null;
+
+  const markdownPath = join(concludeDir, 'claude_skill_review.md');
+  return (await isFile(markdownPath)) ? markdownPath : null;
 }
 
 /** run/<task>/<timestamp>/conclude/ */

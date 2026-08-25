@@ -3,7 +3,7 @@
 A working guide to the reviewer role, distilled from `t30EvalProcess.pdf`.
 
 This is the master review document. The callable instructions in
-`.cursor/skills/code-review/SKILL.md` are derived from it. When this workflow
+`.github/skills/code-review/SKILL.md` are derived from it. When this workflow
 changes, update that skill to match. Invoke the skill manually when starting a
 review.
 
@@ -28,16 +28,21 @@ The single idea behind every rubric: a good TB3 task must be **hard enough that 
 
 ---
 
-## The two signals you inherit
+## The three review layers
 
-Before you touch a task, two automated assessments already exist. Treat both as claims to verify, not facts:
+The report must keep these layers separate:
 
-| Signal | What it is | Your obligation |
+| Layer | What it contains | How to use it |
 | --- | --- | --- |
-| **TQA review** | Each rubric card marked PASS/FAIL with an explanation. Any single FAIL means the task fails TQA review. | Inspect each rubric against the evidence. Contest invalid failures. |
-| **Reviewer Agent verdict** | One holistic judgement on the whole task. | Read and evaluate it alongside tests and selected trial evidence. Call out unsupported verdicts explicitly. |
+| **TQA review** | TQA's original PASS, FAIL, LOW, MOD, or missing result and its explanation for each rubric. | Report what TQA checked. Point out wrong or unsupported claims in the reason. Do not invent a second TQA decision field. |
+| **Reviewer Agent review** | An independent, usually holistic review of the same task. | Summarize its relevant finding when it discussed the criterion. Use `Not addressed` when it did not. Do not turn it into 49 approve or reject votes. |
+| **Human review** | Your judgement after checking the task evidence, TQA review, and Reviewer Agent review. | Enter `ACCEPT` or `REJECT` for each portal criterion. End with one task-level `ACCEPT` or `REJECT`. |
 
-You can **contest** either one. If a TQA FAIL is hallucinated, unsupported, factually wrong, or *stricter than the actual TB3 requirement*, record the exact reason and contest it. If the Reviewer Agent verdict is invalid, you must explicitly say so in your review and explain the mismatch. Never rubber-stamp the labels.
+TQA and the Reviewer Agent are independent inputs to the human review. They do
+not approve or reject each other. The human checks their claims against the task
+and test evidence. When either review is wrong, say what it claimed and what the
+evidence shows instead. Never add `TQA Decision`, `My Verdict`, or a per-item
+`Reviewer Agent: ACCEPT/REJECT` field.
 
 ---
 
@@ -142,7 +147,9 @@ Read `tests/test.sh` in execution order. Check all three cases:
 2. **`set -e` must not skip reward generation.** If `set -e` is active when pytest runs, the script must disable it with `set +e` or use another explicit construct that captures pytest's exit code. Otherwise, a failed test exits the script before `reward.txt` is written. Harbor then reports `RewardFileNotFound`, which hides the actual test result.
 3. **Write the reward before the final exit.** The script may end with `exit 0` or with pytest's captured exit code. Either form is acceptable only after `reward.txt` has been written from the completed test result. The shell exit code does not replace the reward file.
 
-For every finding, cite the pytest invocation, the reward write, and the final exit by file and line.
+For every finding, cite the pytest invocation, the reward write, and the final
+exit. Prefer the shell command or variable name. Add a short task-relative path
+such as `/tests/test.sh:6-10` only when the lines help locate it.
 
 ---
 
@@ -209,15 +216,36 @@ These carry the most weight because a failure in one cascades into clarity, cove
 
 False positives and false negatives are the core of every review. They decide whether the verifier grades the task honestly. Structure, Docker hygiene, reward handling, and coverage still matter, but they are secondary to whether correct work passes and wrong work fails.
 
-- A **false negative** means a correct solution is rejected because the instruction and verifier disagree, or because a test is buggy or too strict.
-- A **false positive** means an incorrect, incomplete, or cheating solution passes because the verifier is weak or can be bypassed.
+- A **false negative** means the verifier rejects a solution that follows the
+  written instruction. Explain the exact compliant behavior, the test that
+  rejects it, and why the instruction allows it.
+- A **false positive** means the verifier accepts a solution that does not do
+  the required work. Explain the exact wrong implementation, the tests it still
+  passes, and which required behavior those tests never exercise.
 
 Do not report "none" for either category until every test and every assertion has been checked. For each assertion, ask both questions:
 
 1. What incorrect result could satisfy this assertion?
 2. What correct result could this assertion reject?
 
-An FP/FN finding must be defensible without guesswork. Name the exact test and assertion. Quote or cite the instruction sentence that defines the expected behaviour. Describe the concrete wrong solution that passes or the concrete correct solution that fails. State whether the selected trial evidence demonstrates the issue or whether it is a code-path finding. If the evidence does not support that level of confidence, mark it unverifiable instead of claiming an FP or FN.
+Write every FP/FN finding so a colleague can repeat the explanation without
+opening the whole report. Use this order:
+
+1. **Expected behavior:** say what the instruction requires or permits.
+2. **Verifier behavior:** name the test function and assertion or comparison.
+3. **Concrete counterexample:** describe the wrong solution that passes for an
+  FP, or the compliant solution that fails for an FN.
+4. **Why the result is wrong:** connect the counterexample to the missing,
+  over-strict, or mismatched check.
+5. **Proof level:** say whether a selected attempt demonstrates it or whether
+  source inspection proves only that the path is possible.
+6. **Fix:** state the smallest test or instruction change that closes the gap.
+
+Do not stop at "hardcoding can pass" or "a correct solution can fail." Name the
+values that could be hardcoded, the inputs the verifier never varies, the extra
+field or valid format it rejects, and the test function responsible. If the
+evidence cannot support that detail, do not claim an FP or FN. Choose `REJECT`
+for the criterion and state exactly which evidence is missing.
 
 1. For every TQA grading, read the description and compare it with task intent. Do not accept the label automatically. Hallucinated claims or conditions stricter than the actual TB3 requirement are **contest candidates** — record the exact reason.
 2. For a model failure, inspect `test-stdout.txt` to identify which assertion failed. Then inspect the corresponding test code and `instruction.md`.
@@ -230,7 +258,8 @@ An FP/FN finding must be defensible without guesswork. Name the exact test and a
 
 ## Writing review comments
 
-Keep the status fields explicit so the TQA outcome and Reviewer Agent assessment stay distinguishable from your own view. Support each finding with concrete evidence and state the required fix.
+Keep TQA, Reviewer Agent, and human review separate. Support the human decision
+with concrete evidence and state a fix when the human decision is `REJECT`.
 
 Write so another reviewer can read the result cold and defend it:
 
@@ -238,7 +267,16 @@ Write so another reviewer can read the result cold and defend it:
 - Do not use em dashes.
 - Use plain words. Write "use", not "utilize". Write "about", not "regarding".
 - Say what you opened and what you saw. Use "I" when describing your checks.
-- Name the file and line for every task-file claim.
+- Prefer test case names, function names, variables, commands, and section names
+  over line-only citations. They tell the reader what was checked.
+- When a path helps, use only a task-relative path such as
+  `/tests/test_outputs.py:290-303`, `/instruction.md:29-35`, or
+  `/tests/test.sh:6-10`. Never print `out/<task>/reviewer-working-copy/`.
+- Refer to Reviewer Agent evidence by its actual section or claim, such as
+  `Reviewer Agent, "Verifier quality"`, not by the findings Markdown path or
+  line numbers. The human report may be shared without that source file.
+- Refer to TQA evidence by rubric number, rubric name, and the substance of its
+  comment. Do not cite the dossier path when those names are clearer.
 - Explain what happens before naming the rubric it affects.
 - Explain what a number means in task terms. Do not report a percentage without its denominator or impact.
 - Do not write vague findings such as "tests are weak" or "instruction is unclear".
@@ -247,27 +285,27 @@ Write six short evidence-group conclusions first. Each conclusion names the
 criteria covered and records the shared checks. Then add a `## Criterion
 decisions` ledger with one numbered subsection for each criterion from 1
 through 49 in strict numeric order. Each subsection must tell the human reviewer
-what mark to enter and whether to accept or reject the inherited claims. Use
-this exact field structure:
+what portal mark to enter. Use this exact field structure:
 
 ```
 ### <number>. <criterion name> (`<criterion_id>`)
-TQA Verdict: <PASS|FAIL|LOW|MOD|no verdict>
-TQA Decision: <ACCEPT|REJECT|UNVERIFIABLE>
-My Verdict: <PASS|FAIL|UNVERIFIABLE>
-Reviewer Agent: <ACCEPT|REJECT|NOT ADDRESSED|UNVERIFIABLE>
-Reason: <plain human explanation of what you checked and why this should pass or fail>
+TQA review: <TQA's original result and a short account of what it checked>
+Reviewer Agent review: <its relevant independent finding, or Not addressed>
+Human decision: <ACCEPT|REJECT>
+Reason: <plain explanation of why the human should enter that decision>
 Evidence:
-  - <prepared output file:line, measured fact, or selected attempt>
-Action: <None, or the exact fix needed>
+  - <test/function/variable/section name, short relative path when useful, measured fact, or named attempt>
+Required fix: <only for REJECT; omit for ACCEPT>
 ```
 
-`TQA Decision` evaluates both the TQA label and the reason TQA gave. A correct
-label with a false or unsupported explanation must be rejected on the record.
-`Reviewer Agent` evaluates its concrete statement for that criterion. `My
-Verdict` is the mark the human reviewer should enter. The group conclusions do
-not replace the numbered decisions. Cite shared evidence again or refer to the
-relevant group conclusion.
+`TQA review` reports TQA's work. If its label or reason is wrong, explain the
+problem in `Reason`; do not add a second verdict about TQA. `Reviewer Agent
+review` reports only what the independent review actually said. Do not infer an
+approval from silence or force its holistic conclusion into every criterion.
+`Human decision` is the only per-criterion portal decision. `ACCEPT` means the
+human finds that criterion satisfied. `REJECT` means the criterion fails or the
+required evidence is missing. Explain missing evidence in `Reason`. The group
+conclusions do not replace the 49 numbered blocks.
 
 After number 49, append the final `Review:` block below. Save the complete plain
 Markdown document to `code-review/out/<task>.human-review.md`. Do not leave the
@@ -276,15 +314,21 @@ interactive app, or other presentation layer.
 
 ```
 Review:
-TQA Status: <TQA verdict and your feedback about it>
-Reviewer Agent Status: <RA verdict and your feedback about it>
-My Analysis: <your analysis of the task, whether it should pass or fail>
-Evidence for your analysis:
-  - <concrete evidence: test case, code line range, selected attempt result>
-Final Verdict: ...
-Fixes:
-  - <recommendations that would make the task shippable>
+What TQA reviewed: <short summary of its results, strongest correct findings, and material misses>
+What the Reviewer Agent reviewed: <short summary of its independent findings and any material misses>
+Human review: <short daily-English explanation of what works, what blocks shipment, and why>
+Evidence:
+  - <named test, function, variable, Reviewer Agent section, measured fact, or short task-relative path>
+Human decision: <ACCEPT|REJECT>
+Required fixes:
+  - <only the changes needed before acceptance; omit when accepting>
 ```
+
+Write the final review like a note to a colleague, not a rubric dump. Use short
+paragraphs and ordinary words. Do not repeat all 49 decisions. Lead with the
+actual behavior and its impact. Use names such as `test_invoice_perturbation`,
+`expected["containers"]`, or `pytest_status` when they are more useful than a
+line range.
 
 Before delivery, check the saved file mechanically. It must contain exactly 49
 numbered criterion headings, numbers 1 through 49 with no gaps or duplicates,

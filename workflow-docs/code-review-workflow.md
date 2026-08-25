@@ -19,7 +19,10 @@ You're a human reviewer for **Terminal Bench 3.0 (TB3)** tasks. A TB3 task is a 
 - `solution/` — `solve.sh`, the reference ("oracle") solution written by the task author
 - `tests/` — the verifier: its own Dockerfile, `test.sh`, and test code
 
-Your deliverable is not a fix to the task. It's an **evidence-backed accept/reject decision plus a written review**. Task authors then use your comments to make it shippable.
+Your deliverable is not a fix to the task. It is a saved Markdown report with
+**49 evidence-backed accept/reject decisions, one for every rubric, plus a final
+written review**. Write it to `code-review/out/<task>.human-review.md`. Task
+authors then use the report to make the task shippable.
 
 The single idea behind every rubric: a good TB3 task must be **hard enough that strong agents genuinely fail, but fair enough that when they fail it's the agent's fault and not the task's**. Almost everything you check is either "is it real work?" or "is the grading honest?"
 
@@ -240,16 +243,36 @@ Write so another reviewer can read the result cold and defend it:
 - Explain what a number means in task terms. Do not report a percentage without its denominator or impact.
 - Do not write vague findings such as "tests are weak" or "instruction is unclear".
 
-Write one section for each of the six rubric groups. Do not produce 49 repetitive rows. Within each group:
+Write six short evidence-group conclusions first. Each conclusion names the
+criteria covered and records the shared checks. Then add a `## Criterion
+decisions` ledger with one numbered subsection for each criterion from 1
+through 49 in strict numeric order. Each subsection must tell the human reviewer
+what mark to enter and whether to accept or reject the inherited claims. Use
+this exact field structure:
 
-1. State the conclusion.
-2. Name the criterion numbers and IDs covered.
-3. Describe the checks once when the criteria share evidence.
-4. List only exceptions, disagreements, or criteria that need a separate note.
+```
+### <number>. <criterion name> (`<criterion_id>`)
+TQA Verdict: <PASS|FAIL|LOW|MOD|no verdict>
+TQA Decision: <ACCEPT|REJECT|UNVERIFIABLE>
+My Verdict: <PASS|FAIL|UNVERIFIABLE>
+Reviewer Agent: <ACCEPT|REJECT|NOT ADDRESSED|UNVERIFIABLE>
+Reason: <plain human explanation of what you checked and why this should pass or fail>
+Evidence:
+  - <prepared output file:line, measured fact, or selected attempt>
+Action: <None, or the exact fix needed>
+```
 
-The grouped review must still account for all 49 criteria. Grouping removes repeated prose. It does not permit skipped criteria.
+`TQA Decision` evaluates both the TQA label and the reason TQA gave. A correct
+label with a false or unsupported explanation must be rejected on the record.
+`Reviewer Agent` evaluates its concrete statement for that criterion. `My
+Verdict` is the mark the human reviewer should enter. The group conclusions do
+not replace the numbered decisions. Cite shared evidence again or refer to the
+relevant group conclusion.
 
-Return the final review as a plain Markdown document. Do not create a canvas, web page, dashboard, interactive app, or other presentation layer. The Markdown content is the deliverable.
+After number 49, append the final `Review:` block below. Save the complete plain
+Markdown document to `code-review/out/<task>.human-review.md`. Do not leave the
+deliverable only in chat. Do not create a canvas, web page, dashboard,
+interactive app, or other presentation layer.
 
 ```
 Review:
@@ -262,6 +285,10 @@ Final Verdict: ...
 Fixes:
   - <recommendations that would make the task shippable>
 ```
+
+Before delivery, check the saved file mechanically. It must contain exactly 49
+numbered criterion headings, numbers 1 through 49 with no gaps or duplicates,
+and one final `Review:` block. Tell the user the saved file path.
 
 **Worked example — False Negative: FAIL**
 

@@ -77,10 +77,12 @@ Work one group at a time; each group's sources are read once.
 | Cleanliness and determinism | task.toml, Dockerfiles, file listing, timing | reproducibility, timeouts, structure, schema |
 | Documentation and safety | instruction, task.toml explanations, README | clarity, context, metadata, safety |
 
-Write one conclusion per group. Name the criterion numbers and IDs covered in
-that group. Reuse a check when several criteria depend on the same evidence.
-List a separate note only for an exception, disagreement, or distinct defect.
-All 49 criteria must appear in one of the six groups.
+Use the six groups to organize evidence gathering, but write a separate numbered
+decision for every criterion from 1 through 49. Each decision must state the
+TQA label, whether you accept or reject that label, your own PASS/FAIL verdict,
+a short human explanation, concrete evidence, and the action needed when it
+fails. Shared evidence may be cited more than once. Do not replace individual
+decisions with one group conclusion.
 
 Evidence is an output `file:line`, a measured number with its meaning, or a
 named selected attempt. "Looks fine" is not evidence. Use `unverifiable` when
@@ -217,10 +219,36 @@ Write so a colleague can read the review cold and defend it:
 - Do not write "tests are weak" or "instruction is unclear" without the exact
   mismatch.
 
-Use six group sections, followed by the final review block. Do not emit a
-49-row table. Name the criteria covered by each group and call out exceptions.
-Return plain Markdown only. Do not create a canvas, web page, dashboard,
-interactive app, or other presentation layer.
+Write the review to `code-review/out/<task>.human-review.md`. The saved Markdown
+file is the deliverable. Do not leave the review only in chat.
+
+Start with six short evidence-group conclusions. Each conclusion names the
+criteria covered and states the shared evidence once. Follow those conclusions
+with a separate `## Criterion decisions` ledger containing all 49 criteria in
+strict numeric order. Use this structure for every criterion:
+
+```
+### <number>. <criterion name> (`<criterion_id>`)
+TQA Verdict: <PASS|FAIL|LOW|MOD|no verdict>
+TQA Decision: <ACCEPT|REJECT|UNVERIFIABLE>
+My Verdict: <PASS|FAIL|UNVERIFIABLE>
+Reviewer Agent: <ACCEPT|REJECT|NOT ADDRESSED|UNVERIFIABLE>
+Reason: <plain human explanation of what you checked and why this should pass or fail>
+Evidence:
+  - <prepared output file:line, measured fact, or selected attempt>
+Action: <None, or the exact fix needed>
+```
+
+`TQA Decision` answers whether the TQA label and its stated reason are supported.
+`Reviewer Agent` answers whether its concrete statement about this criterion is
+supported. `My Verdict` is the mark the human reviewer should enter. Never omit
+a criterion because it shares evidence with another criterion. The six group
+conclusions do not replace any numbered decision. Do not use a 49-row table.
+Use 49 readable numbered subsections.
+
+After criterion 49, append the final review block below verbatim. Return plain
+Markdown only. Do not create a canvas, web page, dashboard, interactive app, or
+other presentation layer.
 
 Use this structure verbatim:
 
@@ -235,6 +263,10 @@ Final Verdict: ...
 Fixes:
   - <recommendations that would make the task shippable>
 ```
+
+Before finishing, verify that the file contains exactly 49 numbered criterion
+headings, numbers 1 through 49 with no gaps or duplicates, and the final
+`Review:` block. Report the saved path to the user.
 
 ## Prepared evidence layout
 

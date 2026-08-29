@@ -31,10 +31,10 @@ export function renderDossier(input: DossierInput): string {
   const { slug, session, trials, timing, failures } = input;
   const out: string[] = [];
 
-  out.push(`# Second-round review dossier — ${slug}`);
+  out.push(`# TQA review evidence — ${slug}`);
   out.push('');
   out.push(
-    'Everything needed to judge all 49 criteria independently. AutoQA\'s verdict',
+    'Everything needed to judge all 49 criteria independently. TQA\'s verdict',
     'is shown for each, but it is an input to check, not a starting point to trust.',
   );
   out.push('');
@@ -76,7 +76,7 @@ function measuredFacts(
   const gates = ['task_solvability', 'noop_fails_verifier', 'anti_cheat_robustness'];
   for (const id of gates) {
     const v = session.verdicts.get(id);
-    if (v) out.push(`- ${id}: AutoQA recorded ${v.value ?? 'no value'}`);
+    if (v) out.push(`- ${id}: TQA recorded ${v.value ?? 'no value'}`);
   }
   out.push('');
   return out;
@@ -175,8 +175,8 @@ function criteriaSections(session: Session): string[] {
       );
       out.push('');
       out.push(`- Intent: ${rubric.intent}`);
-      out.push(`- AutoQA: **${v?.value ?? 'no verdict'}**`);
-      if (v) out.push(`- AutoQA reasoning: ${quote(v)}`);
+      out.push(`- TQA: **${v?.value ?? 'no verdict'}**`);
+      if (v) out.push(`- TQA reasoning: ${quote(v)}`);
       out.push(`- Check independently: ${spec.check}`);
       out.push('');
     }
@@ -195,7 +195,7 @@ function outputContract(): string[] {
     '',
     'Rules:',
     '',
-    '- Reach your own conclusion before comparing it with AutoQA.',
+    '- Reach your own conclusion before comparing it with TQA.',
     '- Cite an output file and line, a measured number with its meaning, or a',
     '  named selected attempt. "Looks fine" is not evidence.',
     '- Use unverifiable when the prepared output lacks required evidence. Name',

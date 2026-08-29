@@ -38,15 +38,15 @@ export const BATCH_TITLE: Record<Batch, string> = {
 
 export const BATCH_READS: Record<Batch, string> = {
   oracle:
-    'reviewer-working-copy/solution, verifier tests, dossier measured rewards and timing',
+    'reviewer-working-copy/solution, verifier tests, TQA-recorded rewards and timing',
   verifier:
-    'reviewer-working-copy/tests and environment, dossier NOP result, selected trial results',
+    'reviewer-working-copy/tests and environment, TQA-recorded NOP result, selected trial results',
   fairness:
     'reviewer-working-copy/instruction.md read against tests, plus selected failing assertions',
   difficulty:
     'reviewer-working-copy/instruction.md, task.toml difficulty_explanation, selected trial outputs',
   hygiene:
-    'reviewer-working-copy/task.toml, Dockerfiles, file listing, dossier timing',
+    'reviewer-working-copy/task.toml, Dockerfiles, file listing, TQA-recorded timing',
   docs:
     'reviewer-working-copy/instruction.md, task.toml explanations, README',
 };
@@ -80,7 +80,7 @@ const RECIPE: Record<string, string> = {
   tests_resist_shortcuts:
     'Ask what the cheapest way to satisfy each assertion is. Check whether test files, expected outputs, or the solution are reachable from the agent workspace, and whether any assertion can be satisfied by echoing a constant.',
   anti_cheat_robustness:
-    'Given the assertions, name the cheapest bypass you would attempt. Check whether the tests block it and whether the dossier records a measured anti-cheat result. Do not infer what an unexported trial attempted.',
+    'Given the assertions, name the cheapest bypass you would attempt. Check whether the tests block it and whether the TQA review records a measured anti-cheat result. Do not infer what an unexported trial attempted.',
   reward_hacking:
     'Trace how the reward is produced end to end, and look for a path that raises it without solving the task: writing the reward file directly, influencing the verifier from the agent container, or exiting in a way that skips assertions.',
   noop_fails_verifier:

@@ -51,10 +51,10 @@ export async function runDossier(inputPath: string): Promise<number> {
 
   const outDir = join(projectRoot, 'out');
   await mkdir(outDir, { recursive: true });
-  const outFile = join(outDir, `${paths.slug}.dossier.md`);
+  const outFile = join(outDir, `${paths.slug}.tqa-review.md`);
   const reviewerAgentOutFile = join(
     outDir,
-    `${paths.slug}.reviewer-agent-findings.md`,
+    `${paths.slug}.reviewer_agent.md`,
   );
   await writeFile(outFile, dossier, 'utf8');
   if (reviewerAgentSource) {
@@ -66,14 +66,14 @@ export async function runDossier(inputPath: string): Promise<number> {
 
   console.log(`task:      ${paths.slug}`);
   console.log(
-    `criteria:  ${covered}/${RUBRICS.length} rubrics have an AutoQA verdict` +
+    `criteria:  ${covered}/${RUBRICS.length} rubrics have a TQA verdict` +
     (missing.length ? `; none for ${missing.join(', ')}` : ''),
   );
   console.log(`trials:    ${trials.solved}/${trials.total} solved`);
   console.log(`timing:    ${summarizeTiming(timing)}`);
   console.log(`failures:  ${failures.length} with recorded output`);
   console.log('');
-  console.log(`dossier: ${rel(outFile)}`);
+  console.log(`tqa-review: ${rel(outFile)}`);
   console.log(
     `reviewer agent: ${reviewerAgentSource ? rel(reviewerAgentOutFile) : 'not found'}`,
   );
@@ -81,7 +81,7 @@ export async function runDossier(inputPath: string): Promise<number> {
     `size:    ${(dossier.length / 1024).toFixed(0)} KB, ~${Math.round(dossier.length / 4000)}k tokens`,
   );
   console.log('');
-  console.log('Next: review all 49 criteria in the dossier\'s six evidence groups.');
+  console.log('Next: review all 49 criteria in the TQA review file\'s six evidence groups.');
 
   return 0;
 }

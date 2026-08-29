@@ -3,8 +3,8 @@
 Offline review pipeline for Terminal Bench 3.0 tasks.
 
 Input is a task package downloaded from the reviewer portal. Output is a review
-draft: all 49 criteria, what AutoQA concluded, and a shortlist of the criteria
-where AutoQA's own evidence does not support its label.
+draft: all 49 criteria, what TQA concluded, and a shortlist of the criteria
+where TQA's own evidence does not support its label.
 
 **Nothing is ever submitted.** There is no network code in this repo. Marks and
 the final verdict stay manual in the portal.
@@ -25,7 +25,7 @@ both into `inbox/`, then:
 
 ```bash
 npm run tb3 -- dossier inbox    # evidence to judge all 49 yourself
-npm run tb3 -- analyze inbox    # audit whether AutoQA's verdicts are supported
+npm run tb3 -- analyze inbox    # audit whether TQA's verdicts are supported
 npm run collect-trajectories -- inbox
 npm run copy-working-copy -- inbox
 npm run prepare-review -- inbox # run dossier and both copy commands
@@ -33,14 +33,14 @@ npm run prepare-review -- inbox # run dossier and both copy commands
 
 The two passes answer different questions and are both needed.
 
-`dossier` writes `out/<task>.dossier.md`: measured facts, per-trial durations
+`dossier` writes `out/<task>.tqa-review.md`: measured facts, per-trial durations
 against the configured budgets, what actually failed in each failing trial, and
 the 49 criteria grouped by the evidence they draw on. Task-file contents are not
 embedded. The command also copies `conclude/claude_skill_review.md` unchanged to
-`out/<task>.reviewer-agent-findings.md`.
+`out/<task>.reviewer_agent.md`.
 
 `analyze` writes `out/<task>.review.md`: flags for verdicts whose own reasoning
-cannot support them, and contradictions between AutoQA, the Reviewer Agent, and
+cannot support them, and contradictions between TQA, the Reviewer Agent, and
 recorded trial outcomes. It judges the paperwork, not the task, so it is a
 cross-check on the second round rather than a replacement for it.
 
@@ -81,7 +81,7 @@ Two things in the session JSON must not be conflated:
 
 | Field | Meaning |
 | --- | --- |
-| `jobsByCommand[cmd].verdicts[]` | what AutoQA concluded, with reasoning and findings |
+| `jobsByCommand[cmd].verdicts[]` | what TQA concluded, with reasoning and findings |
 | `rubric[criterionId]` | what the human reviewer marked (`decision`, `comment`, `autoValue`) |
 
 The 49 verdicts are spread across 16 jobs — `check` alone emits 28, `analyze`
@@ -91,7 +91,7 @@ not a reviewable card, and `readme_provides_context` is a card with no verdict.
 ## Why two passes
 
 The second round is the review: reach an independent verdict on all 49 and then
-say whether AutoQA's was right. `dossier` collects the recorded findings and
+say whether TQA's was right. `dossier` collects the recorded findings and
 measured numbers without duplicating the task files.
 
 The audit pass is narrower and complementary. It catches a failure mode the
@@ -131,7 +131,7 @@ rationale, which is where nearly all the signal comes from:
 | `identical-failure-across-trials` | independent trials fail the same way, implying a systematic cause |
 | `no-autoqa-verdict` | reviewable card with nothing pre-assessing it |
 | `accepted-nonpass-without-comment` | non-passing label accepted with no reason recorded |
-| `marked-while-pending` | marked before AutoQA finished |
+| `marked-while-pending` | marked before TQA finished |
 
 Every flag is a claim about the *evidence*, never a verdict on the task. A flag
 means "look here and you probably have grounds to contest", not "this is broken".

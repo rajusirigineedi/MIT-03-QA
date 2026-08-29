@@ -23,6 +23,17 @@ between agents as a voting mechanism.
 the draft and enters marks by hand. There is no network code in the tool and
 there must not be.
 
+**Ground truth is `workflow-docs/tb3-harbor-reference.md`.** The 49 portal rubrics
+are the internal numbering; Harbor grades against 35 implementation criteria, 6
+trial-analysis checks, and ~22 static CI checks. When a finding turns on "what the
+rubric requires", "what a static check enforces", a valid `task.toml` field, the
+exact instruction suffix, or what an automated result (`/review`, `/run`, `/cheat`,
+Oracle, Nop) means, quote the rule from that reference. Section 8 maps every portal
+id to its Harbor criterion; section 7 lists five newer hardening criteria
+(`artifact_efficiency`, `verifier_execution_isolation`, `ctrf_reporting`,
+`do_not_modify_enforced`, `binary_reward`) that predate the 49-set and must be
+folded into the nearest portal rubric's evidence.
+
 ## Three disciplines that decide whether the review is trusted
 
 Every finding obeys these three. A review that skips them reads as confident but
@@ -349,6 +360,38 @@ Read `tests/test.sh` in execution order, quoting the relevant line for each:
 
 Quote the pytest command, reward write, and final exit. Explain order and effect
 without relying on line numbers.
+
+### Harbor gates and the newer hardening criteria
+
+Confirm the task would survive Harbor's own objective gates, and check the five
+hardening criteria the 49-set predates. Full rules and exact strings are in
+`workflow-docs/tb3-harbor-reference.md` (§4, §6, §7); quote from there.
+
+- **binary_reward (#38/#44):** trace every reward write. It must be exactly `0` or
+  `1` on every reachable path. Any ratio, weighted composite, clamp, graded
+  penalty, or rounded continuous score is a hard defect even if the oracle scores
+  1.
+- **ctrf_reporting (#38/#17):** a pytest verifier must pass `--ctrf
+  /logs/verifier/ctrf.json`. Missing it is a real but usually non-blocking defect.
+- **verifier_execution_isolation (#3/#44):** if the verifier runs agent-produced
+  code (pytest importing agent modules counts), it must run unprivileged with a
+  root-only reward channel. A root verifier running agent code is an anti-cheat
+  blocker.
+- **do_not_modify_enforced (#14/#40):** every "do not modify / preserve /
+  read-only" clause in the instruction that names a concrete artifact must be
+  enforced (violating agent fails), via pristine-copy checksum, functional
+  dependence, or verifier isolation. An unenforced one is a false-positive path.
+- **artifact_efficiency (#31/#32/#39):** artifacts carry only agent output;
+  build-time-fixed data is baked into the verifier image; `[[verifier.collect]]`
+  hooks fail safely. A missing capture must be a hard error, never a laundered
+  reward 0.
+
+Static-check violations are concrete, quotable defects: no apt version pins, no
+`--platform` pin, no bare `nproc`, pip pins present, `pytest==9.1.1` /
+`pytest-json-ctrf==0.5.2`, no verify-time network installs, absolute paths, exact
+instruction suffix with N == agent `timeout_sec`, slug ≤ 3 tokens, `[task] name` =
+`terminal-bench/<folder>`, `allow_internet` omitted, canary in a comment. Map each
+to the nearest portal rubric (see reference §8).
 
 ### 8. Audit TQA findings
 
@@ -730,6 +773,9 @@ verbatim quotes. Do not mix one signal's verdict with another.
 
 ## Reference
 
+- `workflow-docs/tb3-harbor-reference.md` — **ground truth**: task structure,
+  `task.toml` schema, the 35 Harbor criteria, the 6 trial-analysis checks, all
+  static CI checks, the portal-49→Harbor map, and command semantics
 - `workflow-docs/code-review-workflow.md` — the full review process
 - `code-review/README.md` — preparation commands and generated layout
 - `npm run tb3 -- rubrics` — all 49 rubrics, ids, and how each is decided

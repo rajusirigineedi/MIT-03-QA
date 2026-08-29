@@ -7,6 +7,16 @@ This is the master review document. The callable instructions in
 workflow changes, update that skill to match. Invoke the skill manually when
 starting a review.
 
+For the authoritative Harbor rules — the 35 implementation criteria the autoreview
+runs, the 6 trial-analysis checks, every static CI check, the `task.toml` schema,
+the task folder layout, and how the portal's 49 rubrics map to Harbor's criteria —
+see `tb3-harbor-reference.md`. This workflow governs *how the portal is marked*;
+that reference is the ground truth for *what Harbor actually checks*, distilled from
+the Harbor repo (`docs/REVIEWING.md`, `docs/TASK_REVIEW_AUTOMATION.md`,
+`docs/prompts/task-implementation.toml`, `docs/TAXONOMY.md`). Quote rules from it
+whenever a finding turns on a rubric bar, a static-check rule, or an automated
+result.
+
 ---
 
 ## What you're reviewing

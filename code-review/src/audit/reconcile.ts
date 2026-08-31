@@ -1,5 +1,5 @@
 /**
- * Reconciles the three independent signals in a package: AutoQA's 49 verdicts,
+ * Reconciles the three independent signals in a package: TQA's 49 findings,
  * the Reviewer Agent's verdict, and the raw trial facts.
  *
  * The spec asks for both automated signals to be treated as claims to verify,
@@ -8,8 +8,8 @@
  *   > Any invalid or unsupported verdict by the Reviewer Agent must be
  *   > explicitly mentioned in your review.
  *
- * Disagreement between two signals is the cheapest place to find a real issue,
- * because one of them is necessarily wrong.
+ * Disagreement between two signals is a useful inspection lead. It is not proof
+ * that either finding is wrong; primary task evidence still decides.
  */
 
 import type { AuditFlag } from './rules.ts';
@@ -61,7 +61,7 @@ export function jobResultContradictions(session: Session): AuditFlag[] {
   return flags;
 }
 
-/** Where the Reviewer Agent recorded a TQA failure that AutoQA calls a pass. */
+/** Where the Reviewer Agent recorded a TQA failure but the session calls it a pass. */
 export function reviewerAgentDisagreements(
   ra: ReviewerAgent,
   session: Session,
@@ -159,22 +159,9 @@ export function annotateWithReviewerAgent(
   flags: AuditFlag[],
   ra: ReviewerAgent,
 ): AuditFlag[] {
-  const difficultyRow = ra.verdictTable.find((r) =>
-    /trial|difficult|pass@/i.test(r.signal),
-  );
   const nearMissNote = ra.annotations.find((a) => a.why_fair);
 
   return flags.map((flag) => {
-    if (
-      difficultyRow &&
-      (flag.rule === 'high-solve-rate' ||
-        flag.rule === 'frontier-gate-self-contradiction')
-    ) {
-      return withCounter(
-        flag,
-        `Reviewer Agent stance "${difficultyRow.stance}": ${difficultyRow.take}`,
-      );
-    }
     if (
       nearMissNote?.why_fair &&
       (flag.rule === 'measured-near-miss' ||

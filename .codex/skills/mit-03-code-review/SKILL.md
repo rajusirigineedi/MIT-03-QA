@@ -1,23 +1,49 @@
 ---
 name: mit-03-code-review
 description: Reviews a Terminal Bench 3.0 (TB3) task from prepared code-review/out evidence, covering all 49 rubrics in six evidence groups and checking TQA and Reviewer Agent claims. Use when reviewing a TB3 task, batch_prod_*__* package, TQA or TuringQA findings, false positives, false negatives, instruction-test alignment, or reviewer portal evidence.
-disable-model-invocation: true
 ---
 
 # TB3 task review
 
 Independently audit all 49 TQA rubrics against primary task evidence. Work in six
 groups so shared evidence is checked once, then write 49 numbered blocks in
-portal order. Each block contains the TQA finding and a human rubric rating of
-`PASS`, `FAIL`, `LOW`, or `MOD`. Use `ACCEPT` or `REJECT` only for the final task
-decision.
+portal order. The per-rubric question is **whether TQA's finding is valid**, not
+whether the task itself passes that rubric. Each block records TQA's finding,
+the independent rubric assessment, any relevant Reviewer Agent note, and the
+binary validity decision the human enters in the portal.
 
 TQA is the review being audited. The Reviewer Agent is another automated review,
-not a judge or a stronger source. Decide each portal criterion from the TQA
-finding, rubric definition, and primary evidence. Read Reviewer Agent findings as
-optional leads before reviewing the six groups. Verify useful leads against
-primary evidence. Never use agreement, disagreement, confidence, or silence
-between agents as a voting mechanism.
+not a judge or a stronger source. First decide what the rubric evidence supports.
+Then compare that result with TQA's label and material reasoning. Read Reviewer
+Agent findings as optional leads and note any relevant one in the rubric block,
+but verify it against primary evidence. Never use agreement, disagreement,
+confidence, or silence between agents as a voting mechanism.
+
+## The decision contract
+
+Keep these decisions separate:
+
+1. **Independent rubric assessment** describes the task itself. Use the rubric's
+   native scale, such as `PASS`, `FAIL`, `HIGH`, `MOD`, or `LOW`.
+2. **Is TQA finding valid** judges TQA's label and explanation. Use only `YES` or
+   `NO`. The portal entry is `PASS` for `YES` and `FAIL` for `NO`.
+
+| TQA finding | Independent check | Is TQA finding valid | Portal entry |
+| --- | --- | --- | --- |
+| TQA says `FAIL` or `LOW`, and the cited defect is real at that severity | agrees | `YES` | `PASS` |
+| TQA says `PASS` or `HIGH`, and the rubric and stated reason hold | agrees | `YES` | `PASS` |
+| TQA says `FAIL` or `LOW`, but the defect is false, unsupported, or over-strict | disagrees | `NO` | `FAIL` |
+| TQA says `PASS` or `HIGH`, but primary evidence proves a defect | disagrees | `NO` | `FAIL` |
+
+A coincidentally correct label with hallucinated or materially unsupported
+reasoning is still `NO`. State which part of the explanation fails. Minor wording
+that does not affect the finding is not grounds for `NO`.
+
+The final task decision is separate again. Base `SHIP` or `REJECT` on the
+independent rubric assessments, not on the count of portal `PASS` or `FAIL`
+entries. A valid TQA `FAIL` receives portal `PASS` and may still make the task a
+`REJECT`. An invalid TQA `PASS` receives portal `FAIL` and may reveal the same
+task blocker.
 
 **Never submit anything.** No marks, no verdict, no portal writes. The user reads
 the draft and enters marks by hand. There is no network code in the tool and
@@ -104,12 +130,14 @@ is a fair or unfair trap is what tests 2 and 3 decide.
 
 ### Rate from evidence; do not over-fail
 
-Your job is to rate each rubric accurately, not to find something wrong. A
+Your job is to assess each rubric accurately and then judge TQA's finding, not to
+find something wrong. A
 well-built task PASSes most or all rubrics, and PASS is the correct outcome when
 the evidence supports it. You have full visibility of the task, so judge each
 rubric against its own stated bar (the TQA review file prints it) and never invent a
-stricter standard. Mark FAIL or MOD only when a concrete defect is proven from
-the evidence. Reserve `REJECT` for a real blocker that survives the second pass.
+stricter standard. Record an underlying `FAIL` or `MOD` only when a concrete
+defect is proven from the evidence. Reserve `REJECT` for a real blocker that
+survives the second pass.
 Do not stack minor concerns into a rejection. Do not hunt for a reason to fail:
 if a rubric is genuinely fine, mark it PASS with a short reason and move on. A
 genuine failure is fine to mark; a manufactured one is not.
@@ -147,14 +175,13 @@ artifact path that provably breaks verification.
   condition 5 → #31): not a FAIL when `environment_mode = "separate"` is set correctly. If
   genuinely unsure whether artifact upload would break, mark **PASS (UNCERTAIN)**, not FAIL.
 
-### The portal takes only PASS or FAIL
+### The portal mark judges TQA, not the task
 
-The rubric vocabulary is PASS, FAIL, LOW, and MOD, but the portal accepts only
-PASS or FAIL. Whenever the rating is not a bare PASS or FAIL, append the
-submittable verdict in brackets, and that bracket is what the human enters:
-`MOD (PASS)`, `MOD (FAIL)`, `LOW (PASS)`, or `LOW (FAIL)`. A MOD or LOW that does
-not block shipping resolves to `(PASS)`; one that blocks shipping resolves to
-`(FAIL)`. Every non-PASS/FAIL rating must carry one.
+The portal accepts only `PASS` or `FAIL` for the human response to a TQA finding.
+Enter `PASS` when `Is TQA finding valid` is `YES`; enter `FAIL` when it is `NO`.
+Never copy the independent rubric assessment into the portal mark. In particular,
+an independently confirmed task defect can be `Independent assessment: FAIL`,
+`Is TQA finding valid: YES`, and `Portal mark: PASS`.
 
 ### Solve rate and runtime belong to specific rubrics only
 
@@ -191,10 +218,10 @@ that need a failing trial to evaluate — are intentionally left unevaluated. RE
 Provides Context (#28) and Uses Structured Output When Appropriate (#20) also
 usually stay unevaluated on purpose in any case. A `No verdict`, blank, or
 `UNEVALUATED` TQA result on these means the rubric was **not run**, not that TQA
-failed it. Record it as `No verdict (not run on purpose)` in `TQA review`, never
-as a TQA FAIL, and never contest a non-existent TQA failure. You still produce
-your own rating with full reasoning and evidence for every one of the 49,
-whatever the SOTA result.
+failed it. Record `TQA finding: No verdict (not run on purpose)` and `Is TQA
+finding valid: N/A (no finding to validate)`. Do not invent a TQA failure or a
+binary portal mark. Still produce the independent assessment with full reasoning
+and evidence so the final task decision covers all 49 rubrics.
 
 ## Workflow
 
@@ -203,12 +230,12 @@ whatever the SOTA result.
 - [ ] 2. Read only the prepared evidence in `code-review/out`
 - [ ] 3. Extract optional Reviewer Agent leads
 - [ ] 4. Build the agent-visible inventory at solve time; audit leakage
-- [ ] 5. Judge all six evidence groups, quoting evidence
+- [ ] 5. Judge the underlying rubrics in all six evidence groups, quoting evidence
 - [ ] 6. Run the solve-time visibility test on every load-bearing rule
 - [ ] 7. Check FP/FN, clarity, alignment, metrics; anatomize failing trials
-- [ ] 8. Audit TQA findings against primary evidence
-- [ ] 9. Write grouped, human review findings with quotes
-- [ ] 10. Second pass: revalidate blockers, write `<task>.human-review-2.md`
+- [ ] 8. Compare each independent assessment with TQA's label and explanation
+- [ ] 9. Write 49 TQA-validity decisions with reason, evidence, and fix
+- [ ] 10. Second pass: revalidate every TQA `NO` and every task blocker
 ```
 
 ### 1. Prepare the evidence
@@ -254,11 +281,11 @@ they never limit scope.
 
 Skim the Reviewer Agent report once before the six groups. Extract only concrete
 leads: a named file or test, a claimed instruction-test mismatch, a possible
-FP/FN path, a metric to verify, or an unexplained trial pattern. Do not copy its
-verdicts into the criterion blocks. Track leads internally as `confirmed`
-(primary evidence proves it — cite the primary evidence), `refuted` (primary
-evidence contradicts it — drop it), or `not checked` (unnecessary or unsettled —
-must not affect a decision). Leads change what you inspect, never what you mark.
+FP/FN path, a metric to verify, or an unexplained trial pattern. For each rubric,
+record the relevant Reviewer Agent note or `No relevant note`. Classify a note as
+`confirmed`, `refuted`, or `not checked`, but cite primary evidence for the actual
+decision. A Reviewer Agent note changes what you inspect, never what you mark by
+itself.
 
 ### 2 & 4. Agent-visible inventory and solution-leakage audit
 
@@ -328,10 +355,10 @@ Work one group at a time; each group's sources are read once.
 | Documentation and safety | instruction, task.toml explanations, README | clarity, context, metadata, safety |
 
 Use the groups to organize evidence, but write a separate numbered decision for
-every criterion 1 through 49. Each block reports TQA's finding and the human
-rating, quoting the load-bearing text. Shared evidence may be cited more than
-once. Do not place Reviewer Agent comments in the criterion blocks. Do not
-replace numbered blocks with group conclusions.
+every criterion 1 through 49. Each block reports TQA's finding, the relevant
+Reviewer Agent note, the independent assessment, and whether TQA's finding is
+valid. Quote the load-bearing text. Shared evidence may be cited more than once.
+Do not replace numbered blocks with group conclusions.
 
 Evidence is a named and quoted test, function, variable, document section,
 measured number with its meaning, or naturally named trial. "Looks fine" is not
@@ -427,23 +454,26 @@ not FAIL on their own — the instruction suffix, `subcategory`/schema field nam
 `terminal-bench/` package prefix, `pytest`/canary version drift, README presence, and
 the separate-verifier `mkdir -p`. See "Relaxed checks — do not FAIL on these alone".
 
-### 8. Audit TQA findings
+### 8. Decide whether each TQA finding is valid
 
-The core of the job and the only part that produces a defensible contest. A flag
-is a claim about the *evidence*, never a verdict on the task. For each TQA claim,
-open the relevant primary evidence under `out/<task>/reviewer-working-copy` and
-check whether the claim is true:
+This is the core of the job. A pipeline flag is only a lead about the evidence,
+not a verdict on the task or on TQA. For each rubric:
 
-- **Claim holds** → report the finding accurately and use the verified quoted
-  evidence in the human reason.
-- **Claim is wrong, unsupported, or stricter than the TB3 requirement** → explain
-  the mismatch and quote what the evidence actually says.
+1. Apply the rubric guideline to primary evidence and record the independent
+   assessment before comparing labels.
+2. Read TQA's label, explanation, examples, and cited values.
+3. Read the relevant Reviewer Agent note, if any. Verify its claim against the
+   same primary evidence.
+4. Compare TQA with the independent assessment. Mark `YES` only when TQA's label
+   and material reasoning are supported. Otherwise mark `NO` and name the exact
+   mismatch.
+5. Convert `YES` to portal `PASS` and `NO` to portal `FAIL`.
 
-Do not consult the Reviewer Agent to settle a criterion. Prefer the test
-function, assertion, variable, command, or document section, quoted. Use a short
-task-relative path such as `/tests/test_outputs.py:290-303` only when lines help.
-Never include `out/<task>/reviewer-working-copy/` in the report. Never write
-"tests are weak" or "instruction is unclear" without quoting the exact mismatch.
+Prefer the test function, assertion, variable, command, or document section,
+quoted. Use a short task-relative path such as `/tests/test_outputs.py:290-303`
+only when lines help. Never include `out/<task>/reviewer-working-copy/` in the
+report. Never write "tests are weak" or "instruction is unclear" without quoting
+the exact mismatch.
 
 ### Analyse selected trials
 
@@ -478,15 +508,13 @@ clusters, or crafted trap cases.
 
 ### Reconcile each group
 
-Judge against the rubric's own intent, which the TQA review file prints. Do not apply a
-stricter standard than the rubric states — over-strictness is itself a contest
-ground. Where your conclusion differs from TQA, that disagreement is the finding;
-say which conclusion the evidence supports and quote why. Where you agree, say
-what you checked so the agreement carries weight. Check non-passing TQA labels
-(`FAIL`, `LOW`, `MOD`) first because they point to possible blockers. Rubrics
-interact: an instruction gap lowers instruction quality, lowers coverage, and can
-create FP/FN at once. When one fails, check whether the same root cause hits
-another before finalising.
+Judge against the rubric's own intent, which the TQA review file prints. Do not
+apply a stricter standard than the rubric states. Where the independent
+assessment differs from TQA, mark TQA invalid and quote why. Where they agree,
+verify the material reasoning before marking TQA valid. Check non-passing TQA
+labels (`FAIL`, `LOW`, `MOD`) first because they point to possible task blockers.
+Rubrics interact: an instruction gap can affect instruction quality, coverage,
+and FP/FN at once. When one fails, check whether the same root cause hits another.
 
 ### 9. Write the review comment
 
@@ -573,12 +601,12 @@ quote the load-bearing text, show the number, stop.
 
 | Field | Limit |
 | --- | --- |
-| `Reason`, PASS | 2 to 4 sentences |
-| `Reason`, FAIL / LOW / MOD | up to 8 short sentences, or up to three short paragraphs when a quote, a formula, and a counter-example are all needed |
+| `Reason`, valid clean finding | 2 to 4 sentences |
+| `Reason`, invalid TQA finding or underlying task defect | up to 8 short sentences, or up to three short paragraphs when a quote, a formula, and a counter-example are all needed |
 | `Evidence` | at most 3 bullets, one line each, each a quote or named symbol |
-| `Required fix` | one sentence |
+| `Fix` | one sentence; use `No fix needed` only when both TQA and the task rubric are sound |
 
-The required quotes count as content, not padding, and the FAIL/LOW/MOD limit
+The required quotes count as content, not padding, and the longer limit
 leaves room for them. When a block runs long, the extra text is almost always
 process narration, a repeated number, or a restated analogy. Cut those, never the
 quote.
@@ -603,10 +631,9 @@ in natural English ("the third Codex trial"), never `attempt_03-fail`.
 
 #### Write every Reason so it can be lifted verbatim
 
-Take the blocks rated `FAIL`, `LOW`, or `MOD`, keep the same wording and quotes,
-and paste them under `My Analysis`. If a `Reason` cannot be pasted into a
-leadership summary as written, it is written wrong. Fix it in the criterion
-block, not the summary.
+The final SHIP or REJECT review should reuse the same reason and quotes from each
+task blocker and each invalid TQA finding. If a `Reason` cannot be pasted into a
+leadership summary as written, fix it in the criterion block first.
 
 #### How it should read
 
@@ -638,79 +665,27 @@ Right — FP with the wrong solution and reward named:
 
 #### Reviewer Agent notes
 
-Keep `## Reviewer Agent notes` to at most six one-line bullets, each naming the
-claim and its status: confirmed, refuted, or not checked. One closing sentence
-says the notes did not decide any human rating. No paragraphs.
+Each rubric block contains the relevant Reviewer Agent note. A short summary may
+also list up to six important Reviewer Agent claims as confirmed, refuted, or not
+checked. State that these notes did not decide any TQA-validity mark.
 
-#### The final block
+#### Final SHIP or REJECT review
 
-Use this structure verbatim:
+Use the user's supplied SHIP or REJECT template exactly. Do not replace it with a
+home-grown format. Choose the template from the independent task assessment,
+not from whether TQA was valid. Fill it with the verified rubric reasons,
+evidence, task blockers, trial metrics, and fixes. TQA and Reviewer Agent outcomes
+are context, not votes.
 
-```
-Review:
-
-TQA Status: <what TQA marked, then the key metrics in one or two sentences: solve counts per model, oracle, no-op and cheat rewards, infra errors, and the common trial pattern>
-Reviewer Agent Status: <its verdict and the reason it gave, in one or two sentences>
-
-My Analysis:
-
-<Failed rubric name / second rubric name when one root cause spans both>: <FAIL | MOD (PASS|FAIL) | LOW (PASS|FAIL)> <append 🔁 if the second pass changed this>
-
-<the same wording as that criterion's Reason, quotes included, in two to four short paragraphs>
-
-<repeat for each failed rubric group, in portal order>
-
-Final Verdict: <Accept|Reject>
-
-<two or three sentences: what TQA and the Reviewer Agent concluded, the blocking defect, and the decision>
-
-Fix: <the concrete changes, listed in one or two sentences; omit when accepting>
-```
-
-`My Analysis` has two shapes depending on the decision. Never write a static
-"nothing failed" line either way.
-
-**When rejecting** (one or more blocking `FAIL`): open with one or two sentences
-on what the task requires in plain words, then give each `FAIL` and each
-non-blocking `MOD`/`LOW` group with its Reason wording, quotes included, in
-portal order. This is the shape shown in the template above.
-
-**When accepting**: write the positive case a reader can trust, not one line.
-
-- One short paragraph on what the task fairly requires, in plain words: what the
-  agent must read, do, and produce.
-- One paragraph on the positive evidence: the solve counts, that any one or two
-  honest failures were genuine agent mistakes and not task defects, that no
-  passing trial hardcoded the visible sample, reused stale artifacts, or took a
-  shortcut, and that the recorded cheat scored 0.
-- One paragraph on the minor, non-blocking concerns you did find: the `MOD`/`LOW`
-  items and any source-only false-negative or false-positive paths, each stated
-  plainly and each noting that no recorded honest or cheat trial triggered it.
-- `Final Verdict: Accept`, with one or two sentences on why those reservations do
-  not block, for example that they are reservations under trial-based
-  adjudication.
-
-Rules for the final block:
-
-- When rejecting, name only the `FAIL` and non-blocking `MOD`/`LOW` groups, never
-  the clean passes. When accepting, give the positives and the non-blocking
-  reservations as above; do not list all 49.
-- Use the rubric's portal name, not its id. Join rubrics with `/` when one defect
-  causes both, for example `Task Specification / Instruction Quality` or
-  `Tests Align with Instruction / No False Negatives`.
-- Reuse the criterion block wording, quotes included. Do not paraphrase into a new
-  voice and do not drop the quote to save space.
-- Separate what a trial proved from what only source reading shows: "No recorded
-  trial failed through these paths, so they are false-negative risks but not
-  trial-confirmed."
-- Report manual verifier testing as its own short paragraph when done. Say what
-  was submitted, which tests passed, and what reward came back.
-- Close with one `Fix:` line that lists the changes. Do not narrate them.
+If the user has not supplied the templates, finish the 49-rubric ledger and the
+second-pass findings. Mark the final formatted review as waiting for the template
+instead of inventing one.
 
 Write the full 49-block review to `code-review/out/<task>.human-review.md`. The
-second pass then writes a separate `code-review/out/<task>.human-review-2.md`
-with only the FAIL blocks and the final `Review:` block (step 10 below). Both
-saved Markdown files are the deliverable. Do not leave the review only in chat.
+second pass writes `code-review/out/<task>.human-review-2.md` with each invalid
+TQA finding, each independent task blocker, and the supplied final review
+template. Both saved Markdown files are the deliverable. Do not leave the review
+only in chat.
 
 Start with six short evidence-group conclusions, each naming the criteria covered
 and stating the shared evidence once in three or four sentences. Follow with a
@@ -719,26 +694,25 @@ numeric order. Use this structure for every criterion:
 
 ```
 ### <number>. <criterion name> (`<criterion_id>`)
-TQA review: <TQA's original result and a short account of what it checked>
-Human rating: <PASS | FAIL | MOD (PASS|FAIL) | LOW (PASS|FAIL)>
-Reason: <plain explanation of the rating, quoting the load-bearing text>
+TQA finding: <TQA's original label and the material reason it gave>
+Reviewer Agent note: <relevant note plus confirmed/refuted/not checked, or No relevant note>
+Independent assessment: <PASS | FAIL | HIGH | MOD | LOW, describing the task rubric>
+Is TQA finding valid: <YES | NO | N/A (no finding to validate)>
+Portal mark: <PASS for YES | FAIL for NO | N/A when TQA did not run the rubric>
+Reason: <plain explanation of the validity decision and underlying assessment, quoting the load-bearing text>
 Evidence:
   - <a verbatim quote, or a named test/function/variable/section whose exact text the Reason already quoted, with the file it lives in>
-Required fix: <only for FAIL, LOW, or MOD; omit for PASS when no change is needed>
+Fix: <task fix, TQA correction, or No fix needed>
 ```
 
-`Human rating` must be submittable: a bare `PASS` or `FAIL`, or a `MOD`/`LOW`
-followed by the bracketed `(PASS)` or `(FAIL)` the human will enter in the
-portal. `TQA review` says what TQA checked and found, as a plain sentence that
-names the result and the reason: "TQA failed the `anti_cheat_robustness` rubric
-because the cheat run still scored reward 1", not "`anti_cheat_robustness`: TQA
-recorded FAIL". If its label or explanation is wrong, explain that in `Reason`
-and quote the contradicting evidence; do not add `TQA Decision`. `Human rating` is your own analysis. Reserve `ACCEPT` and
-`REJECT` for the final task decision. Never omit a criterion because it shares
-evidence with another. Missing exported evidence alone does not prove failure;
-record that gap separately and use other primary evidence or a sufficient TQA
-measured result. The six group conclusions do not replace any numbered decision.
-Use 49 readable numbered subsections, not a table.
+`TQA finding` says what TQA checked and found as a plain sentence: "TQA marked
+`anti_cheat_robustness` FAIL because the cheat run scored reward 1." The
+independent assessment states what the task evidence supports. The validity and
+portal fields answer a different question and must follow the fixed `YES` to
+`PASS`, `NO` to `FAIL` mapping. Never omit a criterion because it shares evidence
+with another. Missing exported evidence alone does not prove a task failure, but
+it can make a TQA claim unsupported. Use 49 readable numbered subsections, not a
+table.
 
 Return plain Markdown only. Do not create a canvas, web page, dashboard,
 interactive app, or other presentation layer.
@@ -753,26 +727,26 @@ a separate, submission-ready file:
 code-review/out/<task>.human-review-2.md
 ```
 
-It contains only the rubric blocks whose submittable verdict is FAIL (a bare
-`FAIL`, or a `MOD`/`LOW` that resolves to `(FAIL)`), each with its full block
-copied over, followed by the final `Review:` block. Non-blocking `MOD (PASS)` and
-`LOW (PASS)` reservations get no block of their own here; they still appear inside
-the final `Review:` block's `My Analysis`.
+It contains every block with `Is TQA finding valid: NO` and every independent
+task blocker, even when TQA correctly found that blocker and therefore receives
+portal `PASS`. Deduplicate rubrics that belong to both sets. Append the final
+SHIP or REJECT review using the user's supplied template.
 
 Before copying each blocker into the final file, revalidate it against its own
 quotes, evidence, and reasoning:
 
-1. Is the rating correct against the rubric's own bar, or did it over-fail? Drop
-   it to PASS and leave it out of the final file when the evidence does not prove
-   a real defect (see "Rate from evidence; do not over-fail").
-2. Does it rest on the right evidence? Re-rate anything that fails #6, #29, or #49
+1. Is the independent assessment correct against the rubric's own bar, or did it
+   over-fail?
+2. Does the TQA-validity decision follow from both TQA's label and its material
+   reasoning? Confirm that `YES` maps to portal `PASS` and `NO` maps to portal
+   `FAIL` regardless of TQA's original label.
+3. Does it rest on the right evidence? Re-rate anything that fails #6, #29, or #49
    on solve rate or runtime, or judges #45 from runtime rather than an actual
    failure pattern.
-3. Can a non-expert read the block and get the problem without cognitive
+4. Can a non-expert read the block and get the problem without cognitive
    overload? Rewrite it in very simple English if not, naming every "the
    contract" / "those details" pointer and glossing or cutting every unexplained
    term.
-4. Is the bracketed `(FAIL)` present and correct?
 
 If the second pass changed a blocker's rating or materially rewrote its reason,
 append ` 🔁` to that block's heading and to its entry in the final `Review:`
@@ -780,15 +754,12 @@ block, so the user can see which items were re-checked and changed. Do not add t
 marker to blocks you left unchanged.
 
 Before finishing, check both saved files. `human-review.md` must contain exactly
-49 numbered criterion headings, numbers 1 through 49 with no gaps or duplicates,
-and the final `Review:` block. `human-review-2.md` must contain every FAIL
-block and the same final `Review:` block. Confirm every non-PASS rating carries a
-bracketed `(PASS)` or `(FAIL)`. Then re-read the failed blocks and both final
-blocks against the voice rules and against discipline 1: every claim about the
-instruction, a test, a comment, or a schema carries the verbatim text, and every
-alignment/specification/false-negative finding carries the solve-time visibility
-verdict. Cut any sentence that narrates your process, repeats a number, or
-restates an analogy. Report both saved paths to the user.
+49 numbered criterion headings, numbers 1 through 49 with no gaps or duplicates.
+Every evaluated TQA finding must have `YES` or `NO`, and every one must map to the
+right portal mark. `human-review-2.md` must contain every `NO` block and every
+independent task blocker. Re-read those blocks against the voice and quote rules.
+Every alignment, specification, or false-negative finding must carry the
+solve-time visibility verdict. Report both saved paths to the user.
 
 ## Prepared evidence layout
 

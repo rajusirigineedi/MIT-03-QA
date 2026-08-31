@@ -1,8 +1,8 @@
 /**
  * Builds the second-round dossier for a downloaded review package.
  *
- * Deliberately separate from `analyze`: that pass judges AutoQA's paperwork,
- * this one assembles what is needed to judge the task itself.
+ * Deliberately separate from `analyze`: that pass checks TQA's evidence,
+ * this one assembles what is needed to assess the task before validating TQA.
  */
 
 import { copyFile, mkdir, writeFile } from 'node:fs/promises';
@@ -81,7 +81,9 @@ export async function runDossier(inputPath: string): Promise<number> {
     `size:    ${(dossier.length / 1024).toFixed(0)} KB, ~${Math.round(dossier.length / 4000)}k tokens`,
   );
   console.log('');
-  console.log('Next: review all 49 criteria in the TQA review file\'s six evidence groups.');
+  console.log(
+    'Next: assess all 49 criteria, then mark each TQA finding YES/PASS or NO/FAIL.',
+  );
 
   return 0;
 }

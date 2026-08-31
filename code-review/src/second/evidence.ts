@@ -1,7 +1,7 @@
 /**
  * What it takes to answer each criterion independently.
  *
- * The audit layer asks "did AutoQA show its work?". This layer asks the prior
+ * The audit layer asks "did TQA show its work?". This layer asks the prior
  * question: "what would I have to read to decide this myself?". Batching the 49
  * by the evidence they draw on means each source file gets read once and the
  * reviewer stays in one frame of mind at a time, instead of thrashing between
@@ -68,7 +68,7 @@ const CLUSTER_BATCH: Record<Cluster, Batch> = {
 };
 
 /**
- * How to reach an independent verdict, for the criteria where "use judgement"
+ * How to reach an independent assessment, for criteria where "use judgement"
  * is not a useful instruction. Everything else falls back to its intent text.
  */
 const RECIPE: Record<string, string> = {
@@ -148,7 +148,7 @@ const RECIPE: Record<string, string> = {
 export interface EvidenceSpec {
   rubric: Rubric;
   batch: Batch;
-  /** Concrete instructions for reaching an independent verdict. */
+  /** Concrete instructions for reaching an independent assessment. */
   check: string;
   /** True when a bespoke recipe exists rather than a fallback to intent. */
   hasRecipe: boolean;

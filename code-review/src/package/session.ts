@@ -3,12 +3,12 @@
  *
  * Two things live in here and must not be conflated:
  *
- *   `jobsByCommand[cmd].verdicts[]`  what AutoQA concluded, with its reasoning
+ *   `jobsByCommand[cmd].verdicts[]`  what TQA concluded, with its reasoning
  *   `rubric[criterionId]`            what the human reviewer marked
  *
  * A criterion can appear in one and not the other: `honest_agent_trial` has a
  * verdict but is not a reviewable card, and `readme_provides_context` is a card
- * with no AutoQA verdict at all.
+ * with no TQA finding at all.
  */
 
 export interface Finding {
@@ -39,7 +39,7 @@ export interface Mark {
   /** `accept` | `reject` */
   decision: string;
   comment: string;
-  /** The AutoQA value the portal showed when the mark was made. */
+  /** The TQA value the portal showed when the validity mark was made. */
   autoValue: string;
 }
 

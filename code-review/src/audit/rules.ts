@@ -1,14 +1,14 @@
 /**
- * Audits AutoQA's 49 verdicts against its own evidence and the trial outcomes.
+ * Audits TQA's 49 findings against its own evidence and the trial outcomes.
  *
- * This is deliberately not a re-implementation of AutoQA's checks. AutoQA
+ * This is deliberately not a re-implementation of TQA's checks. TQA
  * already runs them. What nothing checks is whether each verdict is actually
- * *supported* — the spec's instruction to contest a verdict that is
+ * *supported*. The spec instructs the reviewer to mark a finding invalid when it is
  * "hallucinated, incorrect, unsupported, or stricter than the actual TB3
  * requirement" is the reviewer's job, and most of it is mechanical.
  *
  * Every flag here is a claim about the evidence, not about the task. A flag
- * means "a human should look and probably has grounds to contest", never
+ * means "a human should check whether TQA is valid", never
  * "the task is broken".
  */
 
@@ -82,7 +82,6 @@ export function audit(ctx: AuditContext): AuditFlag[] {
   return [
     ...auditVerdictSupport(ctx),
     ...auditAnalyzeContradictions(ctx),
-    ...auditSolveRate(ctx),
     ...auditCardCoverage(ctx),
     ...auditReviewerMarks(ctx),
   ].sort(bySeverityThenCriterion);
@@ -115,7 +114,7 @@ function auditVerdictSupport({ session }: AuditContext): AuditFlag[] {
           'The verdict carries no findings and its reasoning describes only ' +
           'whether the pipeline chose to block, which says nothing about the ' +
           'task. Under the spec this is an unsupported verdict and a ' +
-          'contest candidate.',
+          'candidate for Is TQA finding valid: NO.',
         evidence: [
           `job=${verdict.command}`,
           `value=${verdict.value}`,
@@ -135,7 +134,7 @@ function auditVerdictSupport({ session }: AuditContext): AuditFlag[] {
         detail:
           'The rationale records the absence of a finding, not a positive ' +
           'check. Nothing distinguishes "verified and sound" from "never ' +
-          'examined", so accepting this means vouching for it yourself' +
+          'examined", so marking TQA valid means vouching for it yourself' +
           (rubric?.extraAttention
             ? ' — and the spec singles this rubric out for extra attention.'
             : '.'),
@@ -171,8 +170,8 @@ function auditVerdictSupport({ session }: AuditContext): AuditFlag[] {
       });
     }
 
-    // A non-passing label is the one thing the spec treats as decisive: it
-    // fails TQA review unless the reviewer contests it on the record.
+    // Every TQA label needs a human validity decision. A supported non-passing
+    // finding receives portal PASS even though the underlying task rubric fails.
     if (!passing && verdict.value !== 'PENDING') {
       const mark = session.marks.get(verdict.criterionId);
       if (!mark) {
@@ -182,11 +181,11 @@ function auditVerdictSupport({ session }: AuditContext): AuditFlag[] {
           criterionId: verdict.criterionId,
           title: `${label} is ${verdict.value} and still undecided`,
           detail:
-            'A non-passing label stands until it is either accepted or ' +
-            'contested with recorded evidence. Until this is marked, the task ' +
-            'fails TQA review on this criterion by default. AutoQA supplied ' +
-            `${verdict.findings.length} finding(s) to check against the task ` +
-            'files — see the detail section below.',
+            'This TQA finding still needs a validity decision. If primary ' +
+            'evidence supports the label and its material reason, record YES ' +
+            'and portal PASS even though the task rubric is non-passing. If it ' +
+            'does not, record NO and portal FAIL. TQA supplied ' +
+            `${verdict.findings.length} finding(s) to check against the task files.`,
           evidence: [
             `job=${verdict.command}`,
             `value=${verdict.value}`,
@@ -268,7 +267,7 @@ function auditAnalyzeContradictions({ session }: AuditContext): AuditFlag[] {
           `the ${tier} tier, but the gate only blocks on \`${blockOn}\`, so the ` +
           'criterion still reports a pass. The underlying finding was never ' +
           'refuted — only deemed non-blocking. This is the clearest kind of ' +
-          'contest candidate.',
+          'candidate for Is TQA finding valid: NO.',
         evidence: [
           `analyze.fail_counts.${rawId}=${String(count)}`,
           `analyze.block_on=${blockOn}`,
@@ -315,80 +314,12 @@ function auditAnalyzeContradictions({ session }: AuditContext): AuditFlag[] {
         title: `${describe(verdict)} reads ${verdict.value} but failed for ${model}`,
         detail:
           `The analyze job recorded \`${rawId}: failed\` for ${model}. Confirm ` +
-          'against that trial\'s test-stdout and trajectory before accepting.',
+          'against that trial\'s test-stdout before marking TQA valid.',
         evidence: [
           `model=${model}`,
           `analyze.findings.${rawId}=failed`,
           `verdict.value=${verdict.value}`,
         ],
-      });
-    }
-  }
-
-  return flags;
-}
-
-/**
- * A TB3 task is supposed to be hard enough that strong agents genuinely fail.
- * A high solve rate is direct evidence against the difficulty rubrics, whatever
- * the labels say.
- */
-function auditSolveRate({ session, trials }: AuditContext): AuditFlag[] {
-  if (trials.total === 0) return [];
-
-  const rate = trials.solved / trials.total;
-  const perModel = [...trials.byModel.entries()].map(
-    ([model, ts]) =>
-      `${model}: ${ts.filter((t) => t.solved).length}/${ts.length}`,
-  );
-
-  // Below half is unremarkable for a benchmark task.
-  if (rate < 0.5) return [];
-
-  const flags: AuditFlag[] = [];
-  const affected = ['genuinely_difficult', 'difficulty_crux', 'non_clericalness'];
-  const passing = affected
-    .map((id) => session.verdicts.get(id))
-    .filter((v): v is Verdict => !!v && !isFailingValue(v.value));
-
-  const pct = Math.round(rate * 100);
-  const solvedAll = [...trials.byModel.entries()].filter(([, ts]) =>
-    ts.every((t) => t.solved),
-  );
-
-  flags.push({
-    rule: 'high-solve-rate',
-    severity: rate >= 0.75 ? 'high' : 'medium',
-    title: `${trials.solved} of ${trials.total} trials solved the task (${pct}%)`,
-    detail:
-      'A task that strong agents solve this reliably is not model-breaking, ' +
-      'which bears directly on whether the difficulty is genuine' +
-      (solvedAll.length
-        ? `. ${solvedAll.map(([m]) => m).join(', ')} solved every attempt`
-        : '') +
-      (passing.length
-        ? `. Currently passing regardless: ${passing
-            .map((v) => v.criterionId)
-            .join(', ')}`
-        : ''),
-    evidence: [`overall=${trials.solved}/${trials.total}`, ...perModel],
-  });
-
-  // The frontier gate often states this outright while still passing.
-  const gate = session.verdicts.get('honest_agent_trial');
-  if (gate && !isFailingValue(gate.value) && gate.summary) {
-    if (/not model-breaking|solved by frontier/i.test(gate.summary)) {
-      flags.push({
-        rule: 'frontier-gate-self-contradiction',
-        severity: 'high',
-        criterionId: 'honest_agent_trial',
-        title: 'The frontier-trial gate passes while reporting the task was solved',
-        detail:
-          'The gate\'s own summary says the task was solved by frontier agents ' +
-          'and is not model-breaking, yet it reports a pass. Whatever the gate ' +
-          'is thresholding on, the stated fact argues against the difficulty ' +
-          'rubrics and should be reflected in the review.',
-        evidence: [`value=${gate.value}`, `summary=${quote(gate.summary)}`],
       });
     }
   }
@@ -406,10 +337,10 @@ function auditCardCoverage({ session }: AuditContext): AuditFlag[] {
       rule: 'no-autoqa-verdict',
       severity: rubric.extraAttention ? 'high' : 'medium',
       criterionId: rubric.id,
-      title: `${rubric.n}. ${rubric.title} has no AutoQA verdict`,
+      title: `${rubric.n}. ${rubric.title} has no TQA finding`,
       detail:
-        'Nothing in the package pre-assesses this criterion, so it rests ' +
-        'entirely on your own reading. There is no label to agree or disagree with.',
+        'TQA did not run this criterion. Record N/A for TQA validity rather than ' +
+        'inventing a label, but still assess the task rubric for the final decision.',
       evidence: ['absent from every jobsByCommand[*].verdicts'],
     });
   }
@@ -453,8 +384,8 @@ function auditReviewerMarks({ session }: AuditContext): AuditFlag[] {
       ? `${rubric.n}. ${rubric.title}`
       : mark.criterionId;
 
-    // Accepting a non-passing label without recording why leaves the TQA
-    // failure standing with no contest on record.
+    // Portal accept means the reviewer judged the TQA finding valid. A comment
+    // should explain why, even when TQA's underlying rubric label is non-passing.
     if (
       mark.decision === 'accept' &&
       isFailingValue(mark.autoValue) &&
@@ -465,11 +396,10 @@ function auditReviewerMarks({ session }: AuditContext): AuditFlag[] {
         rule: 'accepted-nonpass-without-comment',
         severity: 'high',
         criterionId: mark.criterionId,
-        title: `${label} accepted at ${mark.autoValue} with no comment`,
+        title: `${label} marked portal PASS for TQA ${mark.autoValue} with no comment`,
         detail:
-          'A non-passing label was accepted without a recorded reason. The ' +
-          'spec expects the evidence for accepting or contesting to be written ' +
-          'down, and an empty comment leaves the failure standing unexplained.',
+          'Portal PASS says the human found TQA valid. The comment is empty, so ' +
+          'the evidence supporting TQA\'s label and material reason is missing.',
         evidence: [`autoValue=${mark.autoValue}`, 'comment=""'],
       });
     }
@@ -479,7 +409,7 @@ function auditReviewerMarks({ session }: AuditContext): AuditFlag[] {
         rule: 'marked-while-pending',
         severity: 'medium',
         criterionId: mark.criterionId,
-        title: `${label} was marked while AutoQA was still PENDING`,
+        title: `${label} was marked while TQA was still PENDING`,
         detail:
           'The label was not final when the mark was made, so the mark may ' +
           'not reflect the finished analysis.',

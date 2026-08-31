@@ -1,5 +1,5 @@
 /**
- * Verifies the factual content of every AutoQA verdict against the shipped task.
+ * Verifies the factual content of every TQA finding against the shipped task.
  *
  * The rest of the audit asks whether a rationale is *well-formed*. This asks
  * whether it is *true*. A verdict can read as a confident, detailed pass and
@@ -168,7 +168,7 @@ function checkFilePaths(
 }
 
 /**
- * AutoQA's structured findings quote the passage they object to. If the quote is
+ * TQA's structured findings quote the passage they object to. If the quote is
  * not in the file, the objection is not about this task.
  */
 function checkQuotedPassages(
@@ -320,7 +320,7 @@ export function claimFlags(report: ClaimReport): AuditFlag[] {
           'The reasoning reads as a confident assessment, but these specifics ' +
           'do not match the shipped task. A verdict that misdescribes what it ' +
           'examined is unsupported regardless of how detailed it sounds, and ' +
-          'the spec makes that a contest ground.',
+          'the finding should be marked invalid.',
         evidence: hard.map(
           (f) => `${f.kind}: ${JSON.stringify(f.claimed)} — ${f.note}`,
         ),
@@ -337,7 +337,7 @@ export function claimFlags(report: ClaimReport): AuditFlag[] {
           'This rubric asserts the tests trace to the contract, but the ' +
           'reasoning never mentions some of the tests that exist. Those ' +
           'assertions were not shown to trace to anything — check them ' +
-          'yourself before accepting.',
+          'yourself before marking TQA valid.',
         evidence: coverage.map((f) => `${f.claimed} — ${f.note}`),
       });
     }

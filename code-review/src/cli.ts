@@ -3,7 +3,7 @@
  * tb3 — offline review pipeline for Terminal Bench 3.0 tasks.
  *
  * Input is a task package downloaded from the reviewer portal's Download menu:
- * task files, the 49 AutoQA criterion verdicts, and the model run reports.
+ * task files, the 49 TQA criterion findings, and the model run reports.
  *
  * This tool analyses evidence and drafts a review. It never submits anything —
  * marks and the final verdict stay manual in the portal.
@@ -18,8 +18,8 @@ Usage:
 
 Commands:
   rubrics [--cluster=x]   List the 49 rubrics and how each one is decided
-  analyze <path>          Audit whether AutoQA's 49 verdicts are supported
-  dossier <path>          Assemble the evidence to judge all 49 independently
+  analyze <path>          Audit whether TQA's 49 findings are supported
+  dossier <path>          Assess all 49, then validate each TQA finding
   collect-trajectories <path>
                           Copy compact per-attempt evidence to out/<task>/trajectories
   copy-working-copy <path>

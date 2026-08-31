@@ -3,8 +3,14 @@
 Offline review pipeline for Terminal Bench 3.0 tasks.
 
 Input is a task package downloaded from the reviewer portal. Output is a review
-draft: all 49 criteria, what TQA concluded, and a shortlist of the criteria
-where TQA's own evidence does not support its label.
+draft for all 49 criteria: what TQA concluded, the evidence needed to assess the
+task independently, and a shortlist of findings whose label or explanation may
+not hold up.
+
+The human mark answers "Is TQA's finding valid?" It does not repeat TQA's task
+rubric label. `YES` maps to portal `PASS`; `NO` maps to portal `FAIL`. A TQA
+`FAIL` backed by the evidence therefore receives portal `PASS`, even though the
+underlying task rubric still fails and may make the final task decision REJECT.
 
 **Nothing is ever submitted.** There is no network code in this repo. Marks and
 the final verdict stay manual in the portal.
@@ -24,7 +30,7 @@ Download **Full task package** and **trajectories** from the portal, extract
 both into `inbox/`, then:
 
 ```bash
-npm run tb3 -- dossier inbox    # evidence to judge all 49 yourself
+npm run tb3 -- dossier inbox    # assess all 49, then validate each TQA finding
 npm run tb3 -- analyze inbox    # audit whether TQA's verdicts are supported
 npm run collect-trajectories -- inbox
 npm run copy-working-copy -- inbox
@@ -35,7 +41,8 @@ The two passes answer different questions and are both needed.
 
 `dossier` writes `out/<task>.tqa-review.md`: measured facts, per-trial durations
 against the configured budgets, what actually failed in each failing trial, and
-the 49 criteria grouped by the evidence they draw on. Task-file contents are not
+the 49 criteria grouped by the evidence they draw on. Each criterion keeps TQA's
+full reasoning and structured finding payload. Task-file contents are not
 embedded. The command also copies `conclude/claude_skill_review.md` unchanged to
 `out/<task>.reviewer_agent.md`.
 
@@ -82,7 +89,7 @@ Two things in the session JSON must not be conflated:
 | Field | Meaning |
 | --- | --- |
 | `jobsByCommand[cmd].verdicts[]` | what TQA concluded, with reasoning and findings |
-| `rubric[criterionId]` | what the human reviewer marked (`decision`, `comment`, `autoValue`) |
+| `rubric[criterionId]` | whether the human accepted or rejected TQA's finding (`decision`, `comment`, `autoValue`) |
 
 The 49 verdicts are spread across 16 jobs — `check` alone emits 28, `analyze`
 emits 7. Membership is not symmetric: `honest_agent_trial` has a verdict but is
@@ -90,14 +97,15 @@ not a reviewable card, and `readme_provides_context` is a card with no verdict.
 
 ## Why two passes
 
-The second round is the review: reach an independent verdict on all 49 and then
-say whether TQA's was right. `dossier` collects the recorded findings and
-measured numbers without duplicating the task files.
+The second round has two ordered decisions. First assess the task against each
+rubric. Then decide whether TQA's label and material reasoning match that
+assessment. `dossier` collects the recorded findings and measured numbers without
+duplicating the task files.
 
 The audit pass is narrower and complementary. It catches a failure mode the
-second round can miss: a verdict that happens to be *correct* while resting on no
-evidence at all. Those need contesting on the record even when the conclusion
-holds, and the spec explicitly makes that the reviewer's job:
+second round can miss: a label that happens to be correct while its explanation
+rests on no evidence. That TQA finding is still invalid and should receive portal
+`FAIL`, because the finding includes its material reasoning.
 
 > Contest a failure or passing when the TQA explanation is hallucinated,
 > incorrect, unsupported, or stricter than the actual TB3 requirement.
@@ -125,8 +133,6 @@ rationale, which is where nearly all the signal comes from:
 | `analyze-contradiction` | criterion reads PASS while `analyze` counted a failure |
 | `analyze-model-contradiction` | same, for a specific model's trial |
 | `incomplete-model-analysis` | `analyze` covered fewer models than it ran |
-| `high-solve-rate` | strong agents solve it reliably, so it is not model-breaking |
-| `frontier-gate-self-contradiction` | gate passes while stating the task was solved |
 | `measured-near-miss` | failing trials missed by a tiny numeric margin |
 | `identical-failure-across-trials` | independent trials fail the same way, implying a systematic cause |
 | `no-autoqa-verdict` | reviewable card with nothing pre-assessing it |
@@ -134,7 +140,7 @@ rationale, which is where nearly all the signal comes from:
 | `marked-while-pending` | marked before TQA finished |
 
 Every flag is a claim about the *evidence*, never a verdict on the task. A flag
-means "look here and you probably have grounds to contest", not "this is broken".
+means "check this before deciding TQA validity", not "this task is broken".
 
 ## Layout
 

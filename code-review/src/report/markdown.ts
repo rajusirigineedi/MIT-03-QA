@@ -1,6 +1,6 @@
 /**
- * Renders a review draft: the 49 criteria, what AutoQA said, what the audit
- * found, and a shortlist of what needs a human decision.
+ * Renders a review draft: the 49 criteria, what TQA said, what the audit found,
+ * and a shortlist of findings whose validity needs a human decision.
  *
  * The draft is for reading and copying from. Nothing here is submitted.
  */
@@ -19,7 +19,7 @@ export interface ReportInput {
   flags: AuditFlag[];
   reviewerAgent: ReviewerAgent | null;
   claimChecks: ClaimCheck[];
-  /** Verification of the concrete assertions AutoQA made in its reasoning. */
+  /** Verification of the concrete assertions TQA made in its reasoning. */
   autoqaClaims: ClaimReport | null;
 }
 
@@ -115,7 +115,7 @@ function renderHeader(
     `- Portal status: ${session.status}` +
       (session.decision ? ` (decision: ${session.decision})` : ''),
     `- Criteria marked: ${session.marks.size}/${RUBRICS.length}`,
-    `- AutoQA verdicts present: ${session.verdicts.size}`,
+    `- TQA findings present: ${session.verdicts.size}`,
     `- Reviewer Agent verdict: ${reviewerAgent ? `**${reviewerAgent.verdict}**` : 'not in package'}`,
     `- Trials solved: ${trials.solved}/${trials.total}` +
       (perModel ? ` — ${perModel}` : ''),
@@ -176,7 +176,7 @@ function renderTable(
   const out = [
     '## All 49 criteria',
     '',
-    '| # | Criterion | AutoQA | Your mark | Evidence | Flags |',
+    '| # | Criterion | TQA finding | Recorded portal mark | Evidence | Flags |',
     '| --: | --- | --- | --- | --- | --- |',
   ];
 
@@ -191,7 +191,7 @@ function renderTable(
         : verdict.value
       : '—';
     const marked = mark
-      ? mark.decision + (mark.comment.trim() ? ' +note' : '')
+      ? portalMark(mark.decision) + (mark.comment.trim() ? ' +note' : '')
       : '_unmarked_';
     const evidence = verdict
       ? verdict.findings.length
@@ -218,13 +218,13 @@ function renderTable(
   return out;
 }
 
-/** AutoQA's own reasoning per flagged criterion, so it can be checked. */
+/** TQA's own reasoning per flagged criterion, so it can be checked. */
 function renderDetails(
   session: Session,
   byCriterion: Map<string, AuditFlag[]>,
 ): string[] {
   // Anything flagged above `low`, plus every non-passing verdict — those carry
-  // AutoQA's structured evidence and always need a decision.
+  // TQA's structured evidence and always need a decision.
   const ids = [
     ...new Set([
       ...[...byCriterion.keys()].filter((id) =>
@@ -239,9 +239,9 @@ function renderDetails(
   if (!ids.length) return [];
 
   const out = [
-    '## What AutoQA said, for the flagged criteria',
+    '## What TQA said, for the flagged criteria',
     '',
-    'Verify each claim against the task files before accepting or contesting it.',
+    'Verify each claim against the task files before marking TQA valid or invalid.',
     '',
   ];
 
@@ -253,7 +253,7 @@ function renderDetails(
     out.push(`### ${title}`, '');
     if (rubric) out.push(`_Rubric intent:_ ${rubric.intent}`, '');
     if (!verdict) {
-      out.push('No AutoQA verdict exists for this criterion.', '');
+      out.push('No TQA finding exists for this criterion.', '');
       continue;
     }
 
@@ -295,7 +295,7 @@ interface Passage {
 }
 
 /**
- * AutoQA's structured findings vary by check, but the useful ones consistently
+ * TQA's structured findings vary by check, but the useful ones consistently
  * carry quoted passages with a reason. Pull those out where present.
  */
 function extractPassages(details: Record<string, unknown> | undefined): Passage[] {
@@ -323,7 +323,7 @@ function renderVerdictBlock(
   reviewerAgent: ReviewerAgent | null,
 ): string[] {
   const high = flags.filter((f) => f.severity === 'high');
-  const contest = high
+  const invalidCandidates = high
     .filter((f) => f.criterionId)
     .map((f) => `  - ${f.criterionId}: ${f.title}`);
   const raClaims = high.filter((f) =>
@@ -333,34 +333,37 @@ function renderVerdictBlock(
   return [
     '## Draft review comment',
     '',
-    'Skeleton in the format the spec requires. Fill in your own analysis —',
-    'the evidence lines are generated, the judgement is not.',
+    'Skeleton for the validity decision. The evidence lines are generated;',
+    'the independent assessment and TQA-validity judgement are not.',
     '',
     '```',
-    'Review:',
-    `TQA Status: ${session.verdicts.size} verdicts, ` +
+    `TQA findings: ${session.verdicts.size} findings, ` +
       `${[...session.verdicts.values()].filter((v) => isFailingValue(v.value)).length}` +
-      ' non-passing. <your feedback on the TQA outcome>',
-    `Reviewer Agent Status: ${
+      ' non-passing.',
+    `Reviewer Agent: ${
       reviewerAgent
         ? `verdict "${reviewerAgent.verdict}"` +
           (raClaims.length
             ? `. ${raClaims.length} statement(s) do not hold against the shipped ` +
-              'files — see below. <your feedback>'
-            : '. <your feedback>')
+              'files; verify any relevant note against primary evidence.'
+            : '. Verify any relevant note against primary evidence.')
         : '<not in the package — read it in the portal>'
     }`,
     ...raClaims.map((f) => `  - ${f.title}`),
-    'My Analysis: <accept or fail, and why>',
-    'Evidence for your analysis:',
-    ...(contest.length ? contest : ['  - <cite test case, line range, trajectory>']),
+    'Independent assessment: <PASS | FAIL | HIGH | MOD | LOW>',
+    'Is TQA finding valid: <YES | NO | N/A>',
+    'Portal mark: <PASS for YES | FAIL for NO | N/A>',
+    'Reason: <why TQA is right or wrong, tied to the rubric>',
+    'Evidence:',
+    ...(invalidCandidates.length
+      ? invalidCandidates
+      : ['  - <cite test case, line range, trajectory>']),
     `  - Trials: ${trials.solved}/${trials.total} solved` +
       [...trials.byModel.entries()]
         .map(([m, ts]) => `, ${m} ${ts.filter((t) => t.solved).length}/${ts.length}`)
         .join(''),
-    'Final Verdict: <...>',
-    'Fixes:',
-    '  - <what would make this task shippable>',
+    'Fix: <task fix, TQA correction, or No fix needed>',
+    'Final SHIP or REJECT review: <use the user-supplied template>',
     '```',
   ];
 }
@@ -384,6 +387,12 @@ function countSeverities(flags: AuditFlag[]): Record<Severity, number> {
 
 function severityMark(s: Severity): string {
   return s === 'high' ? '●' : s === 'medium' ? '◐' : '○';
+}
+
+function portalMark(decision: string): string {
+  if (decision === 'accept') return 'PASS';
+  if (decision === 'reject') return 'FAIL';
+  return decision || '_unmarked_';
 }
 
 function formatDuration(seconds: number): string {

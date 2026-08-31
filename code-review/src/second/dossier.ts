@@ -1,12 +1,13 @@
 /**
  * Builds the evidence dossier for an independent second-round review.
  *
- * The audit report answers "did AutoQA show its work?". This answers the prior
- * question: it collects the 49 AutoQA criteria and recorded trial facts without
- * embedding the task files themselves.
+ * The audit report answers "did TQA show its work?". This answers the prior
+ * question: it collects the 49 TQA criteria and recorded trial facts without
+ * embedding the task files themselves. The reviewer first assesses the task,
+ * then decides whether each TQA finding is valid.
  */
 
-import type { Session, Verdict } from '../package/session.ts';
+import type { Session } from '../package/session.ts';
 import type { TrialIndex } from '../package/trials.ts';
 import type { TrialFailure } from '../audit/nearmiss.ts';
 import type { TimingReport } from './timing.ts';
@@ -34,8 +35,8 @@ export function renderDossier(input: DossierInput): string {
   out.push(`# TQA review evidence — ${slug}`);
   out.push('');
   out.push(
-    'Everything needed to judge all 49 criteria independently. TQA\'s verdict',
-    'is shown for each, but it is an input to check, not a starting point to trust.',
+    'Everything needed to assess all 49 criteria independently, then decide',
+    'whether each TQA label and its material reasoning are valid.',
   );
   out.push('');
 
@@ -176,8 +177,20 @@ function criteriaSections(session: Session): string[] {
       out.push('');
       out.push(`- Intent: ${rubric.intent}`);
       out.push(`- TQA: **${v?.value ?? 'no verdict'}**`);
-      if (v) out.push(`- TQA reasoning: ${quote(v)}`);
+      if (v?.summary) out.push(`- TQA summary: ${clean(v.summary)}`);
+      if (v?.reasoning) out.push(`- TQA reasoning: ${clean(v.reasoning)}`);
+      if (v?.findings.length) {
+        out.push('- TQA structured findings:');
+        out.push('```json');
+        out.push(JSON.stringify(v.findings, null, 2));
+        out.push('```');
+      }
       out.push(`- Check independently: ${spec.check}`);
+      out.push('- Independent assessment: `<PASS | FAIL | HIGH | MOD | LOW>`');
+      out.push(
+        '- Is TQA finding valid: `<YES | NO | N/A (no finding to validate)>`',
+      );
+      out.push('- Portal mark: `<PASS for YES | FAIL for NO | N/A>`');
       out.push('');
     }
   }
@@ -188,14 +201,20 @@ function outputContract(): string[] {
   return [
     '## Required output',
     '',
-    'Write one section for each of the six evidence groups above. Account for',
-    'all 49 criteria by naming the criterion numbers and ids covered in each',
-    'group. Reuse a check when several criteria depend on the same evidence.',
-    'List separate notes only for exceptions, disagreements, or distinct defects.',
+    'Write one section for each of the six evidence groups above, then one block',
+    'for every rubric in portal order. Reuse evidence when several criteria',
+    'depend on the same source.',
     '',
     'Rules:',
     '',
-    '- Reach your own conclusion before comparing it with TQA.',
+    '- Reach the independent rubric assessment before comparing it with TQA.',
+    '- Read the relevant Reviewer Agent note for each rubric. Verify it against',
+    '  primary evidence and classify it as confirmed, refuted, or not checked.',
+    '- Mark Is TQA finding valid YES only when TQA\'s label and material reasoning',
+    '  hold. Map YES to portal PASS and NO to portal FAIL, regardless of whether',
+    '  TQA itself marked PASS, FAIL, HIGH, LOW, or MOD.',
+    '- A correct TQA label with hallucinated or materially unsupported reasoning',
+    '  is still invalid. Explain the exact unsupported part.',
     '- Cite an output file and line, a measured number with its meaning, or a',
     '  named selected attempt. "Looks fine" is not evidence.',
     '- Use unverifiable when the prepared output lacks required evidence. Name',
@@ -214,15 +233,15 @@ function outputContract(): string[] {
     '  as metadata-only by default. Use only a bounded sample for a named edge case.',
     '- Return plain Markdown only. Do not create a canvas, app, dashboard, or',
     '  other presentation layer.',
-    '- Never submit anything. The reviewer reads the grouped findings and decides.',
+    '- For each rubric provide TQA finding, Reviewer Agent note, independent',
+    '  assessment, TQA validity, portal mark, reason, evidence, and fix.',
+    '- Never submit anything. The reviewer reads the findings and enters marks.',
     '',
   ];
 }
 
-function quote(v: Verdict): string {
-  const text = (v.reasoning ?? '').replace(/\s+/g, ' ').trim();
-  if (!text) return '_none recorded_';
-  return text.length > 600 ? `${text.slice(0, 600)}…` : text;
+function clean(text: string): string {
+  return text.replace(/\s+/g, ' ').trim();
 }
 
 
@@ -234,7 +253,7 @@ function pct(v: number | null): string {
   return v === null ? '?' : `${(v * 100).toFixed(0)}%`;
 }
 
-/** Criteria with no AutoQA verdict at all — nothing to agree or disagree with. */
+/** Criteria with no TQA finding at all: there is nothing to validate. */
 export function missingVerdicts(session: Session): string[] {
   return RUBRICS.filter((r) => !session.verdicts.has(r.id)).map((r) => r.id);
 }

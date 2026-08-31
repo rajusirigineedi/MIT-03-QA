@@ -114,6 +114,39 @@ Do not stack minor concerns into a rejection. Do not hunt for a reason to fail:
 if a rubric is genuinely fine, mark it PASS with a short reason and move on. A
 genuine failure is fine to mark; a manufactured one is not.
 
+### Relaxed checks — do not FAIL on these alone
+
+The items below are mechanical/static-lint nits or Harbor version drift. On a live PR
+Harbor's CI would flag them, but they do not affect whether the task is solvable,
+fair, and honestly graded, and the task under review may have been built against an
+older Harbor version. **None of these, on its own, is a portal FAIL or a rejection
+reason.** Mark PASS (or PASS (UNCERTAIN) where noted) and move on. Only fail when the
+underlying intent is actually broken — a category that is genuinely wrong, a
+*demonstrated* reward-hack (e.g. a recorded cheat trial that forged the reward), or an
+artifact path that provably breaks verification.
+
+- **Verifier runs submitted code as root / no `USER` drop** (verifier_execution_isolation
+  → #3 Anti-cheat, #44 Reward Hacking): not a FAIL. Separate containers already stop
+  direct test access. Fail only if a concrete reward-forging path is demonstrated.
+- **Missing/mismatched instruction suffix** (`You have N seconds…`; check-instruction-suffix
+  → #18): not a FAIL. The harness handles the trailer; treat as a nit at most.
+- **Metadata field-name or schema mismatches** (`sub_category` vs `subcategory`, extra
+  fields like `flags`/`network_mode`/`allowed_hosts`, no `[task]` table; check-task-fields,
+  task_toml_schema → #25, #30): not a FAIL by themselves. Fail only if the *content* is
+  wrong (category not a real domain, tags meaningless, a value the task actually needs is
+  missing).
+- **Missing `README.md` or missing README sections** (task_readme → #28, and as part of
+  #37): not a FAIL. The README is reviewer-facing; its absence does not harm the agent or
+  grading.
+- **`[task] name` missing the `terminal-bench/<folder>` prefix, or no `[task]` table**
+  (check-task-package-name → #37): not a FAIL.
+- **Version / canary drift** (`pytest==8.2.2` vs current `9.1.1`/`ctrf 0.5.2`; an older or
+  different canary GUID; check-pytest-version, check-canary → #39): not a FAIL — likely an
+  older-version task.
+- **Separate-verifier `mkdir -p` for the artifact parent absent** (check-separate-verifier
+  condition 5 → #31): not a FAIL when `environment_mode = "separate"` is set correctly. If
+  genuinely unsure whether artifact upload would break, mark **PASS (UNCERTAIN)**, not FAIL.
+
 ### The portal takes only PASS or FAIL
 
 The rubric vocabulary is PASS, FAIL, LOW, and MOD, but the portal accepts only
@@ -373,10 +406,10 @@ hardening criteria the 49-set predates. Full rules and exact strings are in
   1.
 - **ctrf_reporting (#38/#17):** a pytest verifier must pass `--ctrf
   /logs/verifier/ctrf.json`. Missing it is a real but usually non-blocking defect.
-- **verifier_execution_isolation (#3/#44):** if the verifier runs agent-produced
-  code (pytest importing agent modules counts), it must run unprivileged with a
-  root-only reward channel. A root verifier running agent code is an anti-cheat
-  blocker.
+- **verifier_execution_isolation (#3/#44):** the Harbor ideal is that agent-produced
+  code runs unprivileged with a root-only reward channel. A missing `USER` drop is a
+  **relaxed check — do not FAIL on it alone** (see "Relaxed checks"); fail only if a
+  concrete reward-forging path is demonstrated.
 - **do_not_modify_enforced (#14/#40):** every "do not modify / preserve /
   read-only" clause in the instruction that names a concrete artifact must be
   enforced (violating agent fails), via pristine-copy checksum, functional
@@ -386,12 +419,13 @@ hardening criteria the 49-set predates. Full rules and exact strings are in
   hooks fail safely. A missing capture must be a hard error, never a laundered
   reward 0.
 
-Static-check violations are concrete, quotable defects: no apt version pins, no
-`--platform` pin, no bare `nproc`, pip pins present, `pytest==9.1.1` /
-`pytest-json-ctrf==0.5.2`, no verify-time network installs, absolute paths, exact
-instruction suffix with N == agent `timeout_sec`, slug ≤ 3 tokens, `[task] name` =
-`terminal-bench/<folder>`, `allow_internet` omitted, canary in a comment. Map each
-to the nearest portal rubric (see reference §8).
+Static-check violations can be concrete, quotable defects: no apt version pins, no
+`--platform` pin, no bare `nproc`, pip pins present, no verify-time network installs,
+absolute paths, slug ≤ 3 tokens, `allow_internet` omitted. Map each to the nearest
+portal rubric (see reference §8). But several static checks are **relaxed** and must
+not FAIL on their own — the instruction suffix, `subcategory`/schema field names, the
+`terminal-bench/` package prefix, `pytest`/canary version drift, README presence, and
+the separate-verifier `mkdir -p`. See "Relaxed checks — do not FAIL on these alone".
 
 ### 8. Audit TQA findings
 

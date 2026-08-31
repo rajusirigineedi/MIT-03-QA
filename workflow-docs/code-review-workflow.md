@@ -167,6 +167,17 @@ and do not stack minor concerns into a rejection. Do not hunt for a reason to
 fail: if a rubric is genuinely fine, mark it PASS with a short reason and move on.
 A genuine failure is fine to mark; a manufactured one is not.
 
+**Relaxed checks — do not FAIL on these alone.** Mechanical/static-lint nits and
+Harbor version drift are not portal FAILs by themselves: a missing `You have N
+seconds…` instruction suffix; metadata field-name/schema mismatches (`sub_category`
+vs `subcategory`, extra fields, no `[task]` table); a missing `README.md` or its
+sections; a missing `terminal-bench/` package-name prefix; older `pytest`/canary
+versions; a verifier running submitted code without a `USER` drop; and a missing
+separate-verifier `mkdir -p` for the artifact parent. Mark these PASS (or PASS
+(UNCERTAIN) for the mkdir case) and fail only if the underlying intent is actually
+broken. The full operative list is in the SKILL under "Relaxed checks — do not FAIL
+on these alone" and in `tb3-harbor-reference.md` §6.
+
 ### The portal takes only PASS or FAIL
 
 The rubric vocabulary is PASS, FAIL, LOW, and MOD, but the portal accepts only

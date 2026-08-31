@@ -160,7 +160,10 @@ five most recent are TB3-specific hardening criteria the internal 49-rubric spec
 watch those closely (§7).
 
 Each entry below is: `name` — one-line — the load-bearing PASS/FAIL bar. Read the full
-`guidance` in the TOML for edge cases before failing one.
+`guidance` in the TOML for edge cases before failing one. The FAIL conditions below state
+Harbor's own bar; for our portal, the relaxed-check callout in §6 overrides them for the
+specific nits it names (instruction suffix, schema field names, README presence, package
+prefix, version/canary drift, verifier `USER` drop, separate-verifier `mkdir -p`).
 
 1. **verifiable** — verifier reliable, deterministic, efficient. FAIL if grading is
    subjective, non-deterministic, uses LLM-as-judge without documented justification, or
@@ -290,8 +293,19 @@ limit/crash), ❓ unknown. Analysis roll-up: 🟢 all pass/NA, 🟡 some fail, �
 ## 6. Static CI checks — objective gates
 
 These run automatically on every PR touching `tasks/` (no API keys needed). Each is a
-mechanical rule; a review should confirm the task would pass them and treat a violation as a
-concrete, quotable defect. Names are the real check names.
+mechanical rule; a review should confirm the task would pass them. Names are the real check
+names.
+
+> **Reviewer calibration — relaxed checks.** Several of these are static-lint nits or Harbor
+> version drift that do **not**, on their own, warrant a portal FAIL: **check-instruction-suffix**
+> (missing `You have N seconds…` trailer), **check-task-fields**/schema field-name mismatches
+> (`sub_category` vs `subcategory`, extra fields, missing `[task]` table), **README presence**
+> (missing `README.md` or its sections), **check-task-package-name** (`terminal-bench/` prefix
+> absent), **check-pytest-version** and **check-canary** (older `pytest==8.2.2` / different
+> canary GUID — likely an older-version task), and **check-separate-verifier** condition 5
+> (`RUN mkdir -p` for the artifact parent absent, when `environment_mode = "separate"` is set).
+> Mark these PASS (or PASS (UNCERTAIN) for the mkdir case), and fail only if the underlying
+> intent is actually broken. See the SKILL's "Relaxed checks — do not FAIL on these alone".
 
 | Check | Rule it enforces |
 | --- | --- |
@@ -336,8 +350,10 @@ most likely to miss:
 - **artifact_efficiency** → evidence for #31 (Separate Verifier), #32 (No Extraneous Files),
   #39 (Docker/Env Hygiene). The `[[verifier.collect]]` fail-safe rules are a false-positive
   and reward-integrity concern (#38, #40).
-- **verifier_execution_isolation** → #3 (Anti-cheat), #44 (Reward Hacking). A verifier that
-  runs agent code as root is an anti-cheat blocker even if no trial exploited it.
+- **verifier_execution_isolation** → #3 (Anti-cheat), #44 (Reward Hacking). The ideal is
+  agent code running unprivileged with a root-only reward channel. **Relaxed:** a missing
+  `USER` drop is not a portal FAIL on its own (separate containers already stop direct test
+  access) — fail only if a concrete reward-forging path is demonstrated.
 - **ctrf_reporting** → #17 (Reviewable), #38 (Reward File). Missing `--ctrf` on a pytest
   verifier is a real defect but rarely a ship-blocker on its own.
 - **do_not_modify_enforced** → #14 (Tests Align), #40 (No False Positives). An unenforced
@@ -445,20 +461,24 @@ Reading them:
 ## 10. Quick reviewer checklist against ground truth
 
 Beyond the internal disciplines and FP/FN work, confirm the task would survive Harbor's own
-gates:
+gates. Items marked *(relaxed)* are advisory — note them, but do not FAIL on them alone (see
+the relaxed-checks callout in §6):
 
-- [ ] Separate verifier fully configured (5 conditions of check-separate-verifier) and its
-      inputs are all declared/baked/sidecar (nothing read from a torn-down agent path).
+- [ ] Separate verifier declares `environment_mode = "separate"` and its inputs are all
+      declared/baked/sidecar (nothing read from a torn-down agent path). *(The `mkdir -p`
+      artifact-parent condition is relaxed → PASS (UNCERTAIN) if unsure.)*
 - [ ] Reward is **binary** on every path and written **after** verification; pytest verifier
       emits `--ctrf` to `/logs/verifier/ctrf.json`.
-- [ ] If the verifier runs agent code, it runs unprivileged with a root-only reward channel.
-- [ ] No verify-time network installs of verifier tooling; pip pinned; `pytest==9.1.1` /
-      `pytest-json-ctrf==0.5.2`; no apt pinning; no bare `nproc`; no `--platform` pin.
-- [ ] Instruction uses absolute paths, ends with the exact suffix (N == agent timeout), lists
-      every required output filename, and hides no tools/libraries.
+- [ ] No verify-time network installs of verifier tooling; pip pinned; no apt pinning; no
+      bare `nproc`; no `--platform` pin. *(An older `pytest`/canary version is relaxed.)*
+- [ ] Instruction uses absolute paths, lists every required output filename, and hides no
+      tools/libraries. *(The exact `You have N seconds…` suffix is relaxed.)*
 - [ ] Every "do not modify X" in the instruction is actually enforced.
 - [ ] Artifacts carry only agent output; build-time-fixed data is baked, not shipped; collect
       hooks fail safely.
-- [ ] `task.toml` has only valid fields; slug ≤ 3 tokens; `[task] name` = `terminal-bench/<folder>`;
-      `allow_internet` omitted; category ∈ 7 domains; README has all four required sections.
-- [ ] Oracle 1.0, Nop fails, canary present in a comment in all required files.
+- [ ] `task.toml` category ∈ 7 domains and tags are meaningful; slug ≤ 3 tokens;
+      `allow_internet` omitted. *(Field-name/schema mismatches, missing `[task]` table and
+      `terminal-bench/` prefix, and README presence are relaxed.)*
+- [ ] Oracle 1.0, Nop fails. *(An older/different canary is relaxed.)*
+- [ ] If the verifier runs agent code unprivileged with a root-only reward channel, good; a
+      missing `USER` drop is *(relaxed)* unless a reward-forging path is demonstrated.

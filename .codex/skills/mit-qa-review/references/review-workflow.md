@@ -3,10 +3,11 @@
 Read `GOLDEN_DOC-Task Review Process.md` first. It is the main source and this
 file must follow it. This file only explains how to do the work.
 
-If the GOLDEN document does not answer an exact Harbor question, read
-`tb3-harbor-reference.md`. Read `harbor-sources/task-implementation.toml` only
-when both documents leave the rule unclear. Do not use the larger TOML as the
-default source.
+If the GOLDEN document and this workflow do not answer an exact Harbor question,
+read only the named criterion or schema section in
+`harbor-sources/task-implementation.toml`. Use `templates/task-template.toml`
+when the exact current task configuration shape matters. Do not read the whole
+source TOML by default.
 
 ## 1. Prepare and stay inside the evidence boundary
 
@@ -35,6 +36,66 @@ for the current evidence group.
 Treat large data, fixtures, and binary files as metadata first. Read the smallest
 sample that answers a named question. Never load an entire large artifact merely
 because it exists.
+
+### Harbor-specific facts
+
+Keep these current Harbor rules here because they change review decisions and
+are not fully stated in the GOLDEN document.
+
+- Harbor mounts `solution/` at `/solution/` for the oracle. In separate verifier
+  mode, the agent cannot read `/tests/` or `/solution/`. After the agent stops,
+  the verifier receives declared artifacts, files in its own image, and declared
+  persistent sidecars.
+- `README.md` is reviewer-facing and is not shown to the agent. A verifier rule
+  stated only there is not solve-time instruction.
+- `artifacts` is a top-level list before the first TOML section. Each entry is an
+  absolute path or a table with `source`, `destination`, `exclude`, and
+  `service`.
+- Recognized task sections are `task`, `metadata`, `verifier`, `agent`,
+  `environment`, `solution`, and `source`.
+- Agent and verifier timeouts cannot exceed 28,800 seconds. `gpus` cannot exceed
+  1. Omit `allow_internet`; current static checks reject the field whether it is
+  true or false.
+- Schema or field-name drift alone is a relaxed review issue. Fail a rubric only
+  when the task content or behavior is wrong.
+
+The Harbor implementation source defines six trial criteria and 35
+implementation criteria. Do not copy all definitions into this workflow. Read
+the named entry in `harbor-sources/task-implementation.toml` when its exact PASS,
+FAIL, or NOT_APPLICABLE boundary matters.
+
+Five newer Harbor criteria map to existing portal rubrics:
+
+- `artifact_efficiency` can affect Separate Verifier Container, No Extraneous
+  Files, Reward File Written Correctly, Docker / Environment Hygiene, and No
+  False Positives.
+- `verifier_execution_isolation` can affect Verifier Resists Adversarial Agent
+  and Reward Hacking.
+- `ctrf_reporting` can affect Reviewable by Non-specialists and Reward File
+  Written Correctly.
+- `do_not_modify_enforced` can affect Tests Align with the Instruction and No
+  False Positives.
+- `binary_reward` can affect Reward File Written Correctly and Reward Hacking.
+
+Current static checks cover Dockerfile leakage, test-file declarations,
+separate-verifier setup, verifier network fetches, verifier tooling installed at
+build time, bare `nproc`, and Compose host bind mounts. Execution gates also
+require the environment image to build, the oracle to score 1, and the no-op
+solution to fail.
+
+These findings do not justify a portal FAIL by themselves:
+
+- a missing or different instruction trailer;
+- metadata field-name drift, extra fields, or a missing `[task]` table;
+- a missing README or README section;
+- a missing `terminal-bench/` package prefix;
+- older pytest, CTRF, or canary versions;
+- no verifier `USER` drop without a demonstrated reward-forging path;
+- no artifact-parent `mkdir -p` when separate mode otherwise works.
+
+Record one of these only when useful. Fail when it causes a real task behavior,
+safety, grading, or metadata problem. Do not turn uncertain artifact-upload
+behavior into a blocker without evidence.
 
 ## 2. Keep the three decisions separate
 
@@ -114,23 +175,28 @@ useful Reviewer Agent note. The Reviewer Agent is a lead, not a vote.
 
 ## 5. Use clear names and real evidence
 
-### Quote the load-bearing text
+### Quote the load-bearing text and code
 
 Every claim about an instruction, assertion, variable, comment, schema field, or
-number must include its exact text and location. Name real files, functions,
-test names, variables, and values.
+number must include its exact text. Name real files, functions, test names,
+variables, and values. When code behavior is part of the claim, include the
+smallest useful exact snippet. A path and line number alone are not evidence a
+reviewer can use.
 
 Always name rubrics by the full title and portal id. Never write `#1`, `#39`,
 "rubric 14", or use the generated order number as the name. The order number is
 only for sorting the portal cards.
 
-Always use the real test function, class, assertion, or checked behavior. Never
-rename tests as A, B, C, D, or E. If a shell check has no test function, describe
-what it checks, such as "the reward write after pytest". Do not use placeholders
-such as "first test", "test B", or "some tuples".
+Always copy the real test function, class, assertion, or checked behavior from
+the verifier source or output. Never rename tests as A, B, C, D, or E. Never
+identify them by position or a made-up number, such as "the first test", "test
+3", or "case 4". If a shell check has no test function, describe what it checks,
+such as "the reward write after pytest". Do not use placeholders such as "some
+tuples".
 
 Use short task-relative paths in the report. Prefer a stable symbol or section
-name. Add a line number when it helps the human find the code.
+name. Do not put line numbers or line ranges in reviewer-facing prose. If code
+is useful, show the snippet instead.
 
 ### Check solve-time visibility
 
@@ -157,7 +223,7 @@ For each distinct failure, record:
 - the exact failing assertion and test name;
 - expected and produced values for the concrete case;
 - the rule that generated the expectation;
-- the code snippet or example line causing issue;
+- the smallest useful code snippet or example causing the issue;
 - whether that rule was derivable at solve time;
 - what a solution correct under the visible contract would produce;
 - the count of trials affected by this cause versus genuine agent errors.
@@ -274,16 +340,19 @@ Fix: <task fix, TQA correction, or No fix needed>
 ```
 
 `Reason` must explain both the task assessment and why TQA is right or wrong.
-Write it in a natural reviewer voice and anchor it to the actual task: quote or
-name the relevant instruction clause, test, assertion, variable, value, code
-behavior, or concrete example. Do not replace the analysis with generic phrases
-such as "the tests are weak" or "the instruction is unclear".
+Write it in a natural reviewer voice and anchor it to the actual task. State the
+instruction rule, what the named test or code does, the concrete input and
+expected-versus-actual result, and why the mismatch matters. Include affected
+trial counts when available. Do not replace this analysis with generic phrases
+such as "the tests are weak", "the instruction is unclear", or "the tests do
+not follow the expectation set by the instruction".
 
-`Evidence` must point to primary task evidence using a task-relative path plus
-the exact quote, symbol, assertion, code behavior, measured result, or concrete
-case that supports the reason. Prefer evidence supplied by the task. Never
-invent external facts, examples, citations, or missing context. TQA and Reviewer
-Agent findings are claims to verify, not primary evidence.
+`Evidence` must contain primary task evidence using a task-relative path plus
+the exact quote, symbol, assertion, short code snippet, measured result, or
+concrete case that supports the reason. Do not give a bare line number or line
+range. Prefer evidence supplied by the task. Never invent external facts,
+examples, citations, or missing context. TQA and Reviewer Agent findings are
+claims to verify, not primary evidence.
 
 `Fix` must give the smallest concrete task change when the defect is real. When
 TQA is invalid, give the corrected label or reasoning. Use `No fix needed` only
@@ -351,10 +420,18 @@ across unrelated rubrics. There is no fixed maximum and no target count. Keep
 every genuine failure, but each one must stand on its own clear evidence and
 real impact.
 
-Assemble the final review from the verified rubric blocks and append the user's
-SHIP or REJECT template. Choose the template from the independent task
-assessment. If no template was supplied, say the formatted final review is
-waiting for it. Do not invent another template.
+Read `submission-template.md`. Assemble the final user-facing review in its
+SHIP or REJECT format, chosen from the independent task assessment. This is a
+standing template, so the review must be ready to paste even when the current
+request does not repeat a template. If the user supplied a newer template in
+the current request, use that newer template.
+
+The complete rubric ledger is an audit artifact, not the final response. The
+final response starts with `Review:` and contains `TQA Status`, `Reviewer Agent
+Status`, `My Analysis`, and `Final Verdict`. A REJECT review includes the
+material failed rubric sections and ends with `Fix:`. An accepted review explains
+why any remaining coverage or verifier concerns are reservations rather than
+blockers.
 
 Before delivery, verify that every portal id appears exactly once. Do this with
 the ids, not the generated list numbers. Verify that each `YES` maps to portal

@@ -4,8 +4,9 @@ Offline evidence preparation for Terminal Bench 3.0 reviews. The tool never
 submits portal marks or a final verdict.
 
 The review procedure lives in
-`../.codex/skills/mit-qa-review/references/review-workflow.md`. Harbor rules
-live in `../.codex/skills/mit-qa-review/references/tb3-harbor-reference.md`.
+`../.codex/skills/mit-qa-review/references/review-workflow.md`. The same file
+contains the Harbor rules needed during review. Exact source criteria live in
+`../.codex/skills/mit-qa-review/references/harbor-sources/task-implementation.toml`.
 
 ## Setup
 

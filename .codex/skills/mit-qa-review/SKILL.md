@@ -64,13 +64,15 @@ workflow is only a helper for applying it.
 
 Use these only when needed:
 
-- Read [tb3-harbor-reference.md](references/tb3-harbor-reference.md) when the
-  GOLDEN document does not answer an exact Harbor rule, static check, schema
-  field, or command result.
-- Read
-  [task-implementation.toml](references/harbor-sources/task-implementation.toml)
-  only when the GOLDEN document and the short Harbor reference still do not
-  settle the exact rule.
+- Read [submission-template.md](references/submission-template.md) before writing
+  the final user-facing review. This is the standing submit-ready format for both
+  SHIP and REJECT decisions.
+- Read [task-implementation.toml](references/harbor-sources/task-implementation.toml)
+  only when the GOLDEN document and workflow do not settle an exact Harbor
+  criterion, schema field, or command result. Read only the named criterion or
+  section needed for the question.
+- Read [task-template.toml](references/templates/task-template.toml) only when
+  the exact current task configuration shape matters.
 - Read [code-review/README.md](../../../code-review/README.md) only for commands
   and generated file locations.
 
@@ -80,8 +82,45 @@ Use these only when needed:
   "rubric 14", or another generated list number. Those numbers only show order.
 - Name a test with its real function, class, assertion, or checked behavior. Do
   not invent labels such as test A, B, C, D, or E.
+- Never identify tests by position or number, such as "the first test", "test
+  3", or "case 4". Copy the actual test name from the verifier output or source.
+  If the check has no test function, name the exact command, assertion, or
+  behavior it checks.
 - A script-generated heading or order number is not task evidence and has no
   meaning in the final decision.
+
+## Reasoning standard
+
+The reason is the main work product. It must teach the reviewer what is wrong
+without making them open the task files.
+
+For every material PASS or FAIL claim, connect these facts in plain English:
+
+1. what the instruction requires, using the actual field, rule, value, or
+   example;
+2. what the named test, assertion, or implementation actually does;
+3. the concrete input and result that shows why they match or conflict;
+4. why that behavior matters, including affected trials when trial evidence
+   exists.
+
+Do not write empty reasons such as "the instruction and tests do not align",
+"coverage is weak", "the schema is unclear", or "the agent failed the
+expectation". State the missing field, unchecked behavior, conflicting value,
+or rejected valid output. Explain the causal chain.
+
+Example of the required depth: if the instruction asks for palindromic primes
+but `test_verifier` calls `isPalindrome(n)` before checking `isPrime(n)`, say
+exactly that. Show that for `7`, the intended order is `isPrime(7)` and then
+`isPalindrome(7)`. Explain that the current order calculates palindrome status
+for every number even though only prime numbers need that work. Do not reduce
+this to "the verifier does not follow the instruction."
+
+When code is useful to prove the point, include the smallest exact snippet in a
+fenced code block and explain it. Do not substitute a file line number or line
+range for the code. Name the file and stable function, test, variable, or
+section, but omit line numbers from reviewer-facing prose. For this skill, this
+reviewer-facing rule replaces the GOLDEN document's optional suggestion to add
+line references.
 
 ## Writing style
 
@@ -105,5 +144,7 @@ sound polished, legal, academic, or like a fixed template.
 - Save the complete review and the second-pass review under
   `code-review/out` as described in the workflow.
 
-Write plain Markdown. Use the user's SHIP or REJECT template when supplied. Do
-not invent a replacement template.
+Write plain Markdown. The final user-facing review must follow
+`references/submission-template.md` and be ready to paste into the review
+portal. If the user supplies a newer template in the current request, use that
+instead.

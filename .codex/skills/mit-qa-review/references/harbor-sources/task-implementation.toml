@@ -28,51 +28,6 @@ name = "low_timeout"
 description = "Was the agent still making meaningful progress when it hit the timeout?"
 guidance = "Examine the agent's trajectory near the end of the trial. Look for: active tool calls or command execution at or near the timeout, steady progress on the task (writing code, debugging, making incremental improvements) right up to the cutoff, no signs of the agent being stuck in a loop or idle. PASS if the agent finished well before the timeout, gave up, or was clearly stuck/looping before time ran out. FAIL if the agent was actively making meaningful progress and was cut off by the timeout, OR if the agent finished very close to the timeout (within a couple minutes) while still doing productive work — this suggests the timeout should be increased so the task's difficulty comes from the problem itself, not time pressure. NOT_APPLICABLE if there was an infrastructure error or the agent never started working."
 
-
-[[criteria]]
-name = "verifiable"
-description = "Verifier is reliable, deterministic, and efficient"
-guidance = """
-All tasks must be verifiable. The verification must be efficient and reliable — re-running the verifier hundreds of times should show no failures. Tasks with nondeterminism must always be verified correctly.
-
-The verifier needs to be almost perfect, but not provably perfect. Using LLM-as-a-judge is permissible in rare and extraordinary circumstances, but only if it can be shown that the verifier essentially never makes a mistake. One way to show this is by having multiple different LLMs always make the same determination. It must be documented what alternate approaches could have substituted for LLM-as-a-judge and why those are insufficient.
-
-Reliability also means avoiding runtime network installs at verify time. `apt-get install`, `curl ... | sh`, `pip install`, etc. inside `test.sh` introduce flakiness (intermittent network, rate limits, upstream version churn) and slow every trial. Bake those dependencies into `tests/Dockerfile` instead. Exception: a separate verifier may install the agent's pinned dependency manifest in `test.sh` — its build context is `tests/`, so the agent's deps arrive only at verify time (see `separate_verifier_configured`).
-
-Reject tasks where there is no way to verify the task has been solved or where grading is subjective (e.g., "make this game more fun"). PASS if the verifier is deterministic, reliable, programmatic, and does not perform runtime network installs for verifier dependencies at verify time. FAIL if verification depends on subjective judgment, is non-deterministic, uses LLM-as-a-judge without documented justification, or relies on `test.sh` to install verifier tooling that could be baked into `tests/Dockerfile` (the agent's pinned manifest excepted)."""
-
-[[criteria]]
-name = "solvable"
-description = "Solution demonstrates the task is solvable within time and resource constraints"
-guidance = """
-There must be a working solution that passes all tests. The solution itself should be implementable by someone who knows exactly what to do in a few hours at most. The problem need not be formally proven to be possible — for example, "make this code run faster" is almost certainly solvable if the speed improvement is reasonable given historical trends.
-
-The solution must not be something that would take days to implement because of how much work is required. Good problems should be solvable in a few hours at most by an expert human who knows the idea of the answer in advance. It is OK to be hard to come up with the solution, but the difficulty should not be measured by how much work there is to be done.
-
-PASS if a working solution is provided that passes all tests and could reasonably be implemented by an expert in a few hours. FAIL if no solution is provided, the solution doesn't pass tests, or the implementation requires an unreasonable amount of work."""
-
-[[criteria]]
-name = "difficult"
-description = "Genuinely hard for good reasons — requires professional experience or domain expertise"
-guidance = """
-Tasks should require either significant professional experience (e.g., PhD in related fields) or several years of domain expertise to solve. Difficulty is judged primarily by how hard it would be for a human.
-
-As a general rule, any task that could be solved by an average undergraduate student in under a few days is too easy. Typical course projects — simple compilers, operating systems, standard algorithms — are unlikely to be accepted. Obscure factual knowledge generally does not make tasks hard. Tedious tasks can be very difficult if it is easy to make mistakes, but contrived instruction-following problems with large volumes of non-fundamental work are not acceptable.
-
-Tasks can be hard and still solvable by current models, because current models are already quite good. It is OK if a problem has been solved a few times before on the internet.
-
-PASS if the task requires genuine expertise and would challenge an experienced professional. FAIL if an average undergraduate could solve it in a few days, or if difficulty comes solely from tedium, obscure facts, or LLM-specific tricks."""
-
-[[criteria]]
-name = "interesting"
-description = "Real-world value — someone could get paid to do this"
-guidance = """
-Tasks must have at least some real-world scenario where solving the problem has marginal utility. Someone could get paid in the real world to do this. There must be some small fraction of people who, when they see this task, would think "I wonder if that's solvable" or "I wish I had a solution to this problem."
-
-This might be a very small group of people (e.g., Linux kernel developers who use dvorak on an ARM system built in 2006), but they must exist. Tasks that are hard because they are so obscure that no reasonable person would care are uninteresting. Tasks must not be gimmicks or trick questions.
-
-PASS if the task represents a realistic problem someone would encounter professionally, even for a niche audience. FAIL if the task is a contrived puzzle, toy game, or artificial exercise with no real-world analogue."""
-
 [[criteria]]
 name = "outcome_verified"
 description = "Tests grade outcomes, not process — instructions describe end state, not steps"

@@ -87,7 +87,7 @@ export function audit(ctx: AuditContext): AuditFlag[] {
   ].sort(bySeverityThenCriterion);
 }
 
-/** Verdicts that pass without evidence behind them. */
+/** Notes that tell the reviewer how much checking a TQA result needs. */
 function auditVerdictSupport({ session }: AuditContext): AuditFlag[] {
   const flags: AuditFlag[] = [];
 
@@ -107,14 +107,13 @@ function auditVerdictSupport({ session }: AuditContext): AuditFlag[] {
     if (passing && !hasFindings && procedural) {
       flags.push({
         rule: 'procedural-pass',
-        severity: 'high',
+        severity: rubric?.extraAttention ? 'medium' : 'low',
         criterionId: verdict.criterionId,
         title: `${label} passed on pipeline mechanics, not evidence`,
         detail:
-          'The verdict carries no findings and its reasoning describes only ' +
-          'whether the pipeline chose to block, which says nothing about the ' +
-          'task. Under the spec this is an unsupported verdict and a ' +
-          'candidate for Is TQA finding valid: NO.',
+          'TQA only says whether the pipeline blocked. That does not prove the ' +
+          'task check, but it also does not make the PASS wrong. Check the main ' +
+          'requirement once. Keep the PASS when the task meets it.',
         evidence: [
           `job=${verdict.command}`,
           `value=${verdict.value}`,
@@ -128,15 +127,15 @@ function auditVerdictSupport({ session }: AuditContext): AuditFlag[] {
     if (passing && !hasFindings && absence) {
       flags.push({
         rule: 'absence-based-pass',
-        severity: rubric?.extraAttention ? 'high' : 'medium',
+        severity: rubric?.extraAttention ? 'medium' : 'low',
         criterionId: verdict.criterionId,
         title: `${label} passed only because nothing flagged it`,
         detail:
-          'The rationale records the absence of a finding, not a positive ' +
-          'check. Nothing distinguishes "verified and sound" from "never ' +
-          'examined", so marking TQA valid means vouching for it yourself' +
+          'TQA did not give a positive check here. This is not a reason to ' +
+          'overturn the PASS by itself. Check the main requirement and keep the ' +
+          'PASS when it holds' +
           (rubric?.extraAttention
-            ? ' — and the spec singles this rubric out for extra attention.'
+            ? '. The GOLDEN document asks for a deeper check on this one.'
             : '.'),
         evidence: [
           `job=${verdict.command}`,
@@ -199,13 +198,12 @@ function auditVerdictSupport({ session }: AuditContext): AuditFlag[] {
     if (verdict.provenance === 'autogen' && !hasFindings) {
       flags.push({
         rule: 'autogen-verdict',
-        severity: 'medium',
+        severity: rubric?.extraAttention ? 'medium' : 'low',
         criterionId: verdict.criterionId,
-        title: `${label} was auto-generated rather than analysed`,
+        title: `${label} was filled in automatically`,
         detail:
-          'provenance=autogen means no dedicated analysis produced this ' +
-          'verdict. It reflects a default, so it is only as good as the ' +
-          'assumption behind it.',
+          'TQA did not give a separate check for this result. Confirm the main ' +
+          'requirement. Do not treat the automatic result as a task failure.',
         evidence: [`job=${verdict.command}`, `value=${verdict.value}`],
       });
     }
@@ -337,7 +335,7 @@ function auditCardCoverage({ session }: AuditContext): AuditFlag[] {
       rule: 'no-autoqa-verdict',
       severity: rubric.extraAttention ? 'high' : 'medium',
       criterionId: rubric.id,
-      title: `${rubric.n}. ${rubric.title} has no TQA finding`,
+      title: `${rubric.title} (${rubric.id}) has no TQA finding`,
       detail:
         'TQA did not run this criterion. Record N/A for TQA validity rather than ' +
         'inventing a label, but still assess the task rubric for the final decision.',
@@ -373,7 +371,7 @@ function auditReviewerMarks({ session }: AuditContext): AuditFlag[] {
       rule: 'unmarked-criteria',
       severity: 'low',
       title: `${unmarked.length} of ${RUBRICS.length} criteria are unmarked`,
-      detail: unmarked.map((r) => `${r.n}. ${r.title}`).join('; '),
+      detail: unmarked.map((r) => `${r.title} (${r.id})`).join('; '),
       evidence: unmarked.map((r) => r.id),
     });
   }
@@ -381,7 +379,7 @@ function auditReviewerMarks({ session }: AuditContext): AuditFlag[] {
   for (const mark of session.marks.values()) {
     const rubric = RUBRIC_BY_ID.get(mark.criterionId);
     const label = rubric
-      ? `${rubric.n}. ${rubric.title}`
+      ? `${rubric.title} (${rubric.id})`
       : mark.criterionId;
 
     // Portal accept means the reviewer judged the TQA finding valid. A comment
@@ -433,7 +431,7 @@ function resolveVerdict(session: Session, rawId: string): Verdict | undefined {
 
 function describe(verdict: Verdict): string {
   const rubric = RUBRIC_BY_ID.get(verdict.criterionId);
-  return rubric ? `${rubric.n}. ${rubric.title}` : verdict.criterionId;
+  return rubric ? `${rubric.title} (${rubric.id})` : verdict.criterionId;
 }
 
 function quote(s: string, max = 200): string {

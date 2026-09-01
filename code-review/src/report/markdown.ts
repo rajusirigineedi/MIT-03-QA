@@ -34,7 +34,6 @@ export function renderReport(input: ReportInput): string {
   out.push(...renderReviewerAgent(reviewerAgent, claimChecks), '');
   out.push(...renderTable(session, byCriterion), '');
   out.push(...renderDetails(session, byCriterion), '');
-  out.push(...renderVerdictBlock(session, trials, flags, reviewerAgent), '');
   return out.join('\n');
 }
 
@@ -176,8 +175,8 @@ function renderTable(
   const out = [
     '## All 49 criteria',
     '',
-    '| # | Criterion | TQA finding | Recorded portal mark | Evidence | Flags |',
-    '| --: | --- | --- | --- | --- | --- |',
+    '| Criterion | Portal id | TQA finding | Recorded portal mark | Evidence | Flags |',
+    '| --- | --- | --- | --- | --- | --- |',
   ];
 
   for (const rubric of RUBRICS) {
@@ -205,8 +204,8 @@ function renderTable(
       : '';
 
     out.push(
-      `| ${rubric.n} | ${rubric.title}${rubric.extraAttention ? ' \\*' : ''} ` +
-        `| ${auto} | ${marked} | ${evidence} | ${flagCell} |`,
+      `| ${rubric.title}${rubric.extraAttention ? ' \\*' : ''} ` +
+        `| \`${rubric.id}\` | ${auto} | ${marked} | ${evidence} | ${flagCell} |`,
     );
   }
 
@@ -248,7 +247,7 @@ function renderDetails(
   for (const id of ids) {
     const verdict = session.verdicts.get(id);
     const rubric = RUBRIC_BY_ID.get(id);
-    const title = rubric ? `${rubric.n}. ${rubric.title}` : id;
+    const title = rubric ? `${rubric.title} (\`${rubric.id}\`)` : id;
 
     out.push(`### ${title}`, '');
     if (rubric) out.push(`_Rubric intent:_ ${rubric.intent}`, '');
@@ -313,59 +312,6 @@ function extractPassages(details: Record<string, unknown> | undefined): Passage[
       },
     ];
   });
-}
-
-/** A starting point in the spec's required comment format. */
-function renderVerdictBlock(
-  session: Session,
-  trials: TrialIndex,
-  flags: AuditFlag[],
-  reviewerAgent: ReviewerAgent | null,
-): string[] {
-  const high = flags.filter((f) => f.severity === 'high');
-  const invalidCandidates = high
-    .filter((f) => f.criterionId)
-    .map((f) => `  - ${f.criterionId}: ${f.title}`);
-  const raClaims = high.filter((f) =>
-    f.rule.startsWith('reviewer-agent-'),
-  );
-
-  return [
-    '## Draft review comment',
-    '',
-    'Skeleton for the validity decision. The evidence lines are generated;',
-    'the independent assessment and TQA-validity judgement are not.',
-    '',
-    '```',
-    `TQA findings: ${session.verdicts.size} findings, ` +
-      `${[...session.verdicts.values()].filter((v) => isFailingValue(v.value)).length}` +
-      ' non-passing.',
-    `Reviewer Agent: ${
-      reviewerAgent
-        ? `verdict "${reviewerAgent.verdict}"` +
-          (raClaims.length
-            ? `. ${raClaims.length} statement(s) do not hold against the shipped ` +
-              'files; verify any relevant note against primary evidence.'
-            : '. Verify any relevant note against primary evidence.')
-        : '<not in the package — read it in the portal>'
-    }`,
-    ...raClaims.map((f) => `  - ${f.title}`),
-    'Independent assessment: <PASS | FAIL | HIGH | MOD | LOW>',
-    'Is TQA finding valid: <YES | NO | N/A>',
-    'Portal mark: <PASS for YES | FAIL for NO | N/A>',
-    'Reason: <why TQA is right or wrong, tied to the rubric>',
-    'Evidence:',
-    ...(invalidCandidates.length
-      ? invalidCandidates
-      : ['  - <cite test case, line range, trajectory>']),
-    `  - Trials: ${trials.solved}/${trials.total} solved` +
-      [...trials.byModel.entries()]
-        .map(([m, ts]) => `, ${m} ${ts.filter((t) => t.solved).length}/${ts.length}`)
-        .join(''),
-    'Fix: <task fix, TQA correction, or No fix needed>',
-    'Final SHIP or REJECT review: <use the user-supplied template>',
-    '```',
-  ];
 }
 
 function groupByCriterion(flags: AuditFlag[]): Map<string, AuditFlag[]> {

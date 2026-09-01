@@ -32,7 +32,7 @@ export function jobResultContradictions(session: Session): AuditFlag[] {
       if (isFailingValue(verdict.value)) continue;
       const rubric = RUBRIC_BY_ID.get(verdict.criterionId);
       const label = rubric
-        ? `${rubric.n}. ${rubric.title}`
+        ? `${rubric.title} (${rubric.id})`
         : verdict.criterionId;
 
       flags.push({

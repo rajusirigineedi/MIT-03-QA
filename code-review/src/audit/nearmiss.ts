@@ -1,7 +1,7 @@
 /**
  * Quantifies how close failing trials came to passing.
  *
- * Rubric 46 asks whether failures "fail by a clear margin" rather than being
+ * Near Misses (`near_misses`) asks whether failures "fail by a clear margin" rather than being
  * near-working solutions rejected over a small discrepancy. That is a numeric
  * question whenever the verifier's assertion compares two numbers, so measure
  * it instead of taking a label's word for it.
@@ -128,7 +128,7 @@ export function nearMissFlags(failures: TrialFailure[]): AuditFlag[] {
       `${near.length} failing trial(s) missed by under ` +
       `${(NEAR_MISS_THRESHOLD * 100).toFixed(0)}% — closest was ${pct}%`,
     detail:
-      'Rubric 46 asks whether failures fail by a clear margin. A small relative ' +
+      'Near Misses asks whether failures fail by a clear margin. A small relative ' +
       'margin is a reason to look, not a finding on its own: when the assertion ' +
       'compares aggregate counts, a fraction of a percent can still mean the ' +
       'answer is categorically wrong on the concept under test. Convert the ' +

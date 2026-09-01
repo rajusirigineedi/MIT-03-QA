@@ -304,7 +304,7 @@ export function claimFlags(report: ClaimReport): AuditFlag[] {
 
   for (const [criterionId, failures] of failedByCriterion) {
     const rubric = RUBRIC_BY_ID.get(criterionId);
-    const label = rubric ? `${rubric.n}. ${rubric.title}` : criterionId;
+    const label = rubric ? `${rubric.title} (${rubric.id})` : criterionId;
 
     const hard = failures.filter((f) => f.kind !== 'coverage');
     const coverage = failures.filter((f) => f.kind === 'coverage');

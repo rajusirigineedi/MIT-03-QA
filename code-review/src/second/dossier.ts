@@ -18,7 +18,7 @@ import {
   BATCH_TITLE,
   evidenceByBatch,
 } from './evidence.ts';
-import { RUBRICS } from '../rubrics/rubrics.ts';
+import { isFailingValue, RUBRICS } from '../rubrics/rubrics.ts';
 
 export interface DossierInput {
   slug: string;
@@ -40,13 +40,42 @@ export function renderDossier(input: DossierInput): string {
   );
   out.push('');
 
+  out.push(...reviewFocus(session));
   out.push(...measuredFacts(session, trials, timing));
   out.push(...trialTable(timing));
   out.push(...failureEvidence(failures));
   out.push(...criteriaSections(session));
-  out.push(...outputContract());
 
   return out.join('\n');
+}
+
+function reviewFocus(session: Session): string[] {
+  const nonPassing = RUBRICS.filter((rubric) => {
+    const value = session.verdicts.get(rubric.id)?.value;
+    return value !== 'PENDING' && isFailingValue(value);
+  });
+
+  const out = [
+    '## Review focus',
+    '',
+    'Deep-check the TQA non-passing results and every EXTRA ATTENTION card.',
+    'For a normal TQA PASS, check the main requirement and keep it when it holds.',
+    'Do not invent a failure for a harmless style, structure, or wording choice.',
+    '',
+  ];
+
+  if (!nonPassing.length) {
+    out.push('- TQA non-passing results: none', '');
+    return out;
+  }
+
+  out.push('TQA non-passing results:', '');
+  for (const rubric of nonPassing) {
+    const value = session.verdicts.get(rubric.id)?.value ?? 'no result';
+    out.push(`- ${rubric.title} (\`${rubric.id}\`): ${value}`);
+  }
+  out.push('');
+  return out;
 }
 
 function measuredFacts(
@@ -171,7 +200,7 @@ function criteriaSections(session: Session): string[] {
       const { rubric } = spec;
       const v = session.verdicts.get(rubric.id);
       out.push(
-        `#### ${rubric.n}. ${rubric.title} \`${rubric.id}\`` +
+        `#### ${rubric.title} (\`${rubric.id}\`)` +
         (rubric.extraAttention ? ' — EXTRA ATTENTION' : ''),
       );
       out.push('');
@@ -185,65 +214,15 @@ function criteriaSections(session: Session): string[] {
         out.push(JSON.stringify(v.findings, null, 2));
         out.push('```');
       }
-      out.push(`- Check independently: ${spec.check}`);
-      out.push('- Independent assessment: `<PASS | FAIL | HIGH | MOD | LOW>`');
-      out.push(
-        '- Is TQA finding valid: `<YES | NO | N/A (no finding to validate)>`',
-      );
-      out.push('- Portal mark: `<PASS for YES | FAIL for NO | N/A>`');
       out.push('');
     }
   }
   return out;
 }
 
-function outputContract(): string[] {
-  return [
-    '## Required output',
-    '',
-    'Write one section for each of the six evidence groups above, then one block',
-    'for every rubric in portal order. Reuse evidence when several criteria',
-    'depend on the same source.',
-    '',
-    'Rules:',
-    '',
-    '- Reach the independent rubric assessment before comparing it with TQA.',
-    '- Read the relevant Reviewer Agent note for each rubric. Verify it against',
-    '  primary evidence and classify it as confirmed, refuted, or not checked.',
-    '- Mark Is TQA finding valid YES only when TQA\'s label and material reasoning',
-    '  hold. Map YES to portal PASS and NO to portal FAIL, regardless of whether',
-    '  TQA itself marked PASS, FAIL, HIGH, LOW, or MOD.',
-    '- A correct TQA label with hallucinated or materially unsupported reasoning',
-    '  is still invalid. Explain the exact unsupported part.',
-    '- Cite an output file and line, a measured number with its meaning, or a',
-    '  named selected attempt. "Looks fine" is not evidence.',
-    '- Use unverifiable when the prepared output lacks required evidence. Name',
-    '  what is missing.',
-    '- Use short, plain sentences. Say what you opened and what you saw. Use "I"',
-    '  for your checks. Do not use em dashes.',
-    '- Explain what a number means in task terms. Include its denominator or',
-    '  practical impact.',
-    '- Give extra attention to false positives, false negatives, instruction',
-    '  clarity, instruction-test alignment, coverage, and measured results.',
-    '- Check every test and assertion in both directions before reporting no',
-    '  false positives or false negatives. Cite exact instruction and test lines.',
-    '- Do not recursively read the whole out folder or task output. Open only',
-    '  files needed for the current evidence group.',
-    '- Treat data, input, dataset, fixture, large artifact, and binary contents',
-    '  as metadata-only by default. Use only a bounded sample for a named edge case.',
-    '- Return plain Markdown only. Do not create a canvas, app, dashboard, or',
-    '  other presentation layer.',
-    '- For each rubric provide TQA finding, Reviewer Agent note, independent',
-    '  assessment, TQA validity, portal mark, reason, evidence, and fix.',
-    '- Never submit anything. The reviewer reads the findings and enters marks.',
-    '',
-  ];
-}
-
 function clean(text: string): string {
   return text.replace(/\s+/g, ' ').trim();
 }
-
 
 function sec(v: number | null): string {
   return v === null ? '?' : `${v.toFixed(0)}s`;

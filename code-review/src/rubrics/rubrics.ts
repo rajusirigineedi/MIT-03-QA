@@ -1,9 +1,9 @@
 /**
  * The 49 TB3 review rubrics.
  *
- * Numbering and intent text come from the "Terminal Bench 3.0 - Task Review
- * Process" spec (section 4). The `id` values are the real criterion IDs used by
- * the portal, read from a downloaded review-session JSON.
+ * Source order and intent text come from the "Terminal Bench 3.0 - Task Review
+ * Process" spec. The `id` values are the stable names used by the portal. Show
+ * reviewers the title and id, never the generated source-order number.
  *
  * One extra id shows up in the pipeline's own output but is not one of the 49
  * reviewable cards — see EXTRA_GATE_IDS.
@@ -28,7 +28,7 @@ export type Cluster =
 export type Decidable = 'static' | 'hybrid' | 'llm';
 
 export interface Rubric {
-  /** Spec number, 1-49. */
+  /** Source order only. Never use this as a reviewer-facing rubric name. */
   n: number;
   /** Portal criterion id. */
   id: string;
@@ -152,14 +152,12 @@ export const RUBRICS: Rubric[] = ROWS.map(
 );
 
 export const RUBRIC_BY_ID = new Map(RUBRICS.map((r) => [r.id, r]));
-export const RUBRIC_BY_N = new Map(RUBRICS.map((r) => [r.n, r]));
-
 /**
  * Verdict ids the pipeline emits that are not reviewable rubric cards.
  *
  * `honest_agent_trial` is the frontier-trial gate: it reports whether strong
- * agents solved the task at all. It carries real signal for rubric 6 but is not
- * itself one of the 49.
+ * agents solved the task at all. It carries real signal for Task is Genuinely
+ * Difficult (`genuinely_difficult`) but is not itself a reviewable card.
  */
 export const EXTRA_GATE_IDS = new Set(['honest_agent_trial']);
 

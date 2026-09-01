@@ -7,6 +7,7 @@
  *     harbor-view/tasks/<batch>__<task>/   the actual TB3 task files
  *     harbor-view/jobs/                    raw pipeline job output (noise)
  *     review-session/<batch>__<task>.json  verdicts, marks, and job results
+ *     review-session/<batch>__<task>.feedback.md  prior review, if rejected
  *     run/, reviewer-working-copy/         duplicates of the task snapshot
  *   <batch>__<task>-trajectories/
  *     <model>/attempt_NN/                  per-trial agent and verifier output
@@ -25,6 +26,8 @@ export interface PackagePaths {
   taskDir: string | null;
   /** The review-session JSON. */
   sessionFile: string | null;
+  /** The prior human review and team-lead feedback, when this is a re-review. */
+  feedbackFile: string | null;
   /** Directory holding `<model>/attempt_NN/`. */
   trajectoriesDir: string | null;
   /** Task slug, e.g. `unicode-fold-dedup`. */
@@ -64,6 +67,9 @@ export async function locate(inputPath: string): Promise<PackagePaths> {
   }
 
   const sessionFile = packageDir ? await findSessionFile(packageDir) : null;
+  const feedbackFile = packageDir
+    ? await findFeedbackFile(packageDir, sessionFile)
+    : null;
   const taskDir = packageDir ? await findTaskDir(packageDir) : null;
   const name = basename(packageDir ?? trajectoriesDir ?? root).replace(
     TRAJ_SUFFIX,
@@ -74,6 +80,7 @@ export async function locate(inputPath: string): Promise<PackagePaths> {
     packageDir,
     taskDir,
     sessionFile,
+    feedbackFile,
     trajectoriesDir,
     slug: name.includes('__') ? name.slice(name.lastIndexOf('__') + 2) : name,
   };
@@ -114,7 +121,25 @@ async function findTaskDir(packageDir: string): Promise<string | null> {
 
 async function findSessionFile(packageDir: string): Promise<string | null> {
   const dir = join(packageDir, 'review-session');
-  const names = (await safeReaddir(dir)).filter((n) => n.endsWith('.json'));
+  const names = (await safeReaddir(dir)).filter(
+    (n) => n.endsWith('.json') && !n.endsWith('.feedback.json'),
+  );
+  return names.length ? join(dir, names[0]!) : null;
+}
+
+async function findFeedbackFile(
+  packageDir: string,
+  sessionFile: string | null,
+): Promise<string | null> {
+  const dir = join(packageDir, 'review-session');
+  if (sessionFile) {
+    const expected = sessionFile.replace(/\.json$/, '.feedback.md');
+    if (await isFile(expected)) return expected;
+  }
+
+  const names = (await safeReaddir(dir)).filter((n) =>
+    n.endsWith('.feedback.md'),
+  );
   return names.length ? join(dir, names[0]!) : null;
 }
 

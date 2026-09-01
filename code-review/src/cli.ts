@@ -3,7 +3,8 @@
  * tb3 — offline review pipeline for Terminal Bench 3.0 tasks.
  *
  * Input is a task package downloaded from the reviewer portal's Download menu:
- * task files, the 49 TQA criterion findings, and the model run reports.
+ * task files, the 49 TQA criterion findings, model run reports, and optional
+ * feedback from a rejected review.
  *
  * This tool analyses evidence and drafts a review. It never submits anything —
  * marks and the final verdict stay manual in the portal.
@@ -50,8 +51,8 @@ async function main(argv: string[]): Promise<number> {
         : RUBRICS;
       for (const r of rows) {
         console.log(
-          `${String(r.n).padStart(2)}. ${r.title}${r.extraAttention ? ' *' : ''}\n` +
-          `    id=${r.id}  cluster=${r.cluster}  decided-by=${r.decidable}`,
+          `${r.title}${r.extraAttention ? ' *' : ''}\n` +
+          `    portal-id=${r.id}  cluster=${r.cluster}  decided-by=${r.decidable}`,
         );
       }
       const counts = tally(rows.map((r) => r.decidable));

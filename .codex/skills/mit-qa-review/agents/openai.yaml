@@ -1,0 +1,7 @@
+interface:
+  display_name: "MIT QA review"
+  short_description: "Validate TQA findings for all TB3 rubrics"
+  default_prompt: "Use $mit-qa-review to validate every TQA finding against the TB3 task evidence."
+
+policy:
+  allow_implicit_invocation: false

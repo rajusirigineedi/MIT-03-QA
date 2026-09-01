@@ -5,7 +5,7 @@
  * this one assembles what is needed to assess the task before validating TQA.
  */
 
-import { copyFile, mkdir, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { locate, readJson } from '../package/load.ts';
@@ -56,9 +56,15 @@ export async function runDossier(inputPath: string): Promise<number> {
     outDir,
     `${paths.slug}.reviewer_agent.md`,
   );
+  const feedbackOutFile = join(outDir, `${paths.slug}.feedback.md`);
   await writeFile(outFile, dossier, 'utf8');
   if (reviewerAgentSource) {
     await copyFile(reviewerAgentSource, reviewerAgentOutFile);
+  }
+  if (paths.feedbackFile) {
+    await copyFile(paths.feedbackFile, feedbackOutFile);
+  } else {
+    await rm(feedbackOutFile, { force: true });
   }
 
   const missing = missingVerdicts(session);
@@ -76,6 +82,9 @@ export async function runDossier(inputPath: string): Promise<number> {
   console.log(`tqa-review: ${rel(outFile)}`);
   console.log(
     `reviewer agent: ${reviewerAgentSource ? rel(reviewerAgentOutFile) : 'not found'}`,
+  );
+  console.log(
+    `prior feedback: ${paths.feedbackFile ? rel(feedbackOutFile) : 'not found (fresh review)'}`,
   );
   console.log(
     `size:    ${(dossier.length / 1024).toFixed(0)} KB, ~${Math.round(dossier.length / 4000)}k tokens`,

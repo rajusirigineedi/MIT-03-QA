@@ -52,6 +52,14 @@ Check a possible false positive or false negative using the task contract, the
 exact test or assertion, and the observed trajectory together. The test alone
 does not decide it.
 
+For `difficulty_crux`, use its exact Harbor guidance. An infrastructure or
+verifier error is not proof that the agent missed the intended challenge. Mark
+the criterion `PASS` for an infrastructure error after an honest attempt, or
+`NOT_APPLICABLE` when the error happens before the agent engages and leaves too
+little evidence. Record the infrastructure defect under the rubric it actually
+breaks, such as oracle solvability, verifier reliability, false negatives, or
+failure attribution. Do not turn the same error into a `difficulty_crux` FAIL.
+
 ## Required procedure
 
 Read these two files completely before reviewing a task:
@@ -94,6 +102,14 @@ Use these only when needed:
 The reason is the main work product. It must teach the reviewer what is wrong
 without making them open the task files.
 
+Write the reason for a person who has not read the evidence bullets, trial logs,
+or another rubric block. Start with the task behavior being judged, not with a
+score, trial count, or verdict. Then explain the code or test behavior in normal
+words and give one concrete example when it helps. End with the effect on this
+rubric and on the task. A reader should be able to answer "what happened?",
+"why did it happen?", and "why does this rubric pass or fail?" from `Reason`
+alone.
+
 For every material PASS or FAIL claim, connect these facts in plain English:
 
 1. what the instruction requires, using the actual field, rule, value, or
@@ -101,12 +117,24 @@ For every material PASS or FAIL claim, connect these facts in plain English:
 2. what the named test, assertion, or implementation actually does;
 3. the concrete input and result that shows why they match or conflict;
 4. why that behavior matters, including affected trials when trial evidence
-   exists.
+   exists;
+5. which source `[[criteria]]` entry and which exact part of its `text` or
+   `guidance` sets the decision rule.
 
 Do not write empty reasons such as "the instruction and tests do not align",
 "coverage is weak", "the schema is unclear", or "the agent failed the
 expectation". State the missing field, unchecked behavior, conflicting value,
-or rejected valid output. Explain the causal chain.
+or rejected valid output. Explain the causal chain. Do not use internal review
+shorthand such as "0/16", "the selected defect", "verifier setup", "old
+fallback", or "unrelated to the crux" unless the same reason immediately
+explains what those words mean in this task.
+
+`Evidence` is separate so the reviewer can verify the reason. It does not carry
+context that the reason omitted. Some overlap is expected: the reason explains
+the important instruction, code behavior, input, and result in prose; the
+evidence field gives the exact quote, snippet, assertion, or trial output that
+proves it. `Criteria trace` explains why the rubric rule applies. Neither field
+may be used to finish an incomplete reason.
 
 Example of the required depth: if the instruction asks for palindromic primes
 but `test_verifier` calls `isPalindrome(n)` before checking `isPrime(n)`, say
@@ -121,6 +149,21 @@ range for the code. Name the file and stable function, test, variable, or
 section, but omit line numbers from reviewer-facing prose. For this skill, this
 reviewer-facing rule replaces the GOLDEN document's optional suggestion to add
 line references.
+
+Below the evidence for every rubric, write a `Criteria trace`. Name the exact
+source criterion, quote only the controlling sentence or clause from its `text`
+or `guidance`, then explain how the evidence meets or breaks that clause. For
+example, Tests Align with the Instruction traces to
+`[[criteria]] name = "test_instruction_alignment"` and the clause "Every test
+assertion should trace back to a requirement stated in the instruction." If
+`test_artifact_matches_reference` checks an output field that `instruction.md`
+never defines, say that this assertion has no instruction requirement to trace
+back to, so the clause requires FAIL.
+
+Do not paste the whole criterion. Do not merely write the criterion name. If
+there is no one-to-one Harbor `[[criteria]]` entry, say that clearly and trace
+the decision to the exact controlling text in the GOLDEN rubric instead. Never
+invent a criterion mapping.
 
 ## Writing style
 

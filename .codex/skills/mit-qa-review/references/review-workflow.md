@@ -246,7 +246,7 @@ or several related rubrics.
 | No False Negatives (`no_false_negatives`) | A correct solution must not fail because of a hidden rule, brittle check, or spec and test mismatch. Use the assertion, instruction, test code, and trajectory. |
 | No False Positives (`no_false_positives`) | A wrong solution must not pass because a check is missing or weak. Confirm the path in code or a trajectory. |
 | Task Specification (`task_specification`) | The task contract must be enough for a capable agent. Tests cannot add hidden conventions. |
-| Difficulty Crux (`difficulty_crux`) | Honest failures should come from the intended problem, not clerical work, format, or environment trouble. |
+| Difficulty Crux (`difficulty_crux`) | For a graded honest attempt, fail only when a substantively working solution misses by a small margin and the threshold, not the conceptual work, causes the failure. An infrastructure error is PASS, or NOT_APPLICABLE when it happens before the agent engages and leaves too little evidence. Put the infrastructure defect under the rubric it actually breaks. |
 | Near Misses (`near_misses`) and Non-Clerical Difficulty (`non_clericalness`) | Decide whether almost-correct work failed for a real skill gap or a minor format issue. The main challenge should still need reasoning. |
 
 If one of these fails, check whether the same root cause affects another one.
@@ -317,9 +317,10 @@ core challenge, difficulty crux, near misses, and failure attribution. A fast
 solve or high solve rate alone does not make a task clerical, uninteresting, or
 invalid. A generous expert estimate is not a defect merely because it is high.
 
-The Harbor reference owns static checks, schema rules, hardening criteria, and
-the short list of relaxed version or lint checks that do not justify a portal
-failure by themselves.
+The Harbor-specific facts in this workflow own static checks, schema rules, and
+the short list of relaxed checks that do not justify a portal failure by
+themselves. The named entries in `harbor-sources/task-implementation.toml` own
+the exact criterion wording.
 
 ## 9. Write one block per rubric
 
@@ -336,31 +337,82 @@ Portal mark: <PASS for YES | FAIL for NO | N/A>
 Reason: <plain explanation tied to the rubric and exact evidence>
 Evidence:
   - <task-relative file and exact quote, symbol, assertion, or measured result>
+Criteria trace:
+  - Source criterion: <exact [[criteria]] name, or GOLDEN rubric name when no exact entry exists>
+  - Controlling text: "<smallest exact clause from text, guidance, or GOLDEN rubric>"
+  - Application: <how the evidence meets or breaks that exact clause>
 Fix: <task fix, TQA correction, or No fix needed>
 ```
 
 `Reason` must explain both the task assessment and why TQA is right or wrong.
-Write it in a natural reviewer voice and anchor it to the actual task. State the
-instruction rule, what the named test or code does, the concrete input and
-expected-versus-actual result, and why the mismatch matters. Include affected
-trial counts when available. Do not replace this analysis with generic phrases
-such as "the tests are weak", "the instruction is unclear", or "the tests do
-not follow the expectation set by the instruction".
+Write it in a natural reviewer voice and anchor it to the actual task. It must
+stand on its own before the reader reaches `Evidence` or `Criteria trace`.
+Explain, in this order when it reads naturally:
+
+1. the task behavior or requirement this rubric is judging;
+2. what the named test, function, assertion, or solution does;
+3. one concrete input and expected-versus-actual result when useful;
+4. the practical effect, such as rejecting a correct result, accepting a wrong
+   result, skipping a required check, or preventing the oracle from running;
+5. why that effect makes this rubric pass or fail and why TQA is right or wrong.
+
+Trial counts describe the size of the impact after the defect is explained.
+They are not an explanation by themselves. Never open a reason with a reward,
+pass rate, or count and expect the reader to infer the cause. Avoid unexplained
+review shorthand such as "same crash", "selected defect", "old fallback",
+"weaker tests", "verifier setup", "false negative", or "unrelated to the
+intended challenge". Name the actual crash, stale claim, weak or missing check,
+setup step, valid output that gets rejected, or task challenge.
+
+For example, do not write: "All trials hit the same setup crash, so grading is
+not reliable." Write: "Before the verifier can compare the submitted CSV with
+the expected report, its fixture unpacks each `(user_id, events)` pair as if it
+were a list of events. That raises an exception in six tests, including the
+oracle run, so the verifier gives reward 0 without grading the report. A
+verifier that cannot grade the reference solution is not reliable, even though
+the exception happens the same way on every run."
 
 `Evidence` must contain primary task evidence using a task-relative path plus
 the exact quote, symbol, assertion, short code snippet, measured result, or
 concrete case that supports the reason. Do not give a bare line number or line
 range. Prefer evidence supplied by the task. Never invent external facts,
 examples, citations, or missing context. TQA and Reviewer Agent findings are
-claims to verify, not primary evidence.
+claims to verify, not primary evidence. Evidence is proof, not the missing half
+of the explanation. Repeat a key value or short code expression in both places
+when that is what makes the reason understandable and the proof checkable.
+
+`Criteria trace` explains why that evidence produces this rubric decision. Find
+the matching `[[criteria]]` entry in the authoritative criterion source. Copy
+its exact `name`, then quote the smallest sentence or clause from `text` or
+`guidance` that controls the result. Finish with one plain application sentence
+that connects the evidence to that clause. A criterion name without its
+controlling text is incomplete. A quote without explaining how the evidence
+meets or breaks it is also incomplete.
+
+For example:
+
+```markdown
+Criteria trace:
+  - Source criterion: `test_instruction_alignment`
+  - Controlling text: "Every test assertion should trace back to a requirement stated in the instruction."
+  - Application: `test_artifact_matches_reference` requires a `parties` object that the instruction never defines, so that assertion cannot trace back to an instruction requirement and the criterion fails.
+```
+
+The portal rubric id and Harbor criterion name may differ. Use the real source
+name, not a guessed rewrite of the portal id. When no one-to-one Harbor entry
+exists, write `No exact Harbor criterion entry` and quote the controlling GOLDEN
+rubric text instead. Do not hide a missing mapping and do not paste an entire
+criterion when one sentence decides the result.
 
 `Fix` must give the smallest concrete task change when the defect is real. When
 TQA is invalid, give the corrected label or reasoning. Use `No fix needed` only
 when both the task rubric and the TQA finding are sound.
 
-Keep ordinary reasons to two to four sentences. A complex defect may use up to
-eight short sentences and three evidence bullets. Each block must make sense by
-itself to a reviewer who has not read the other rubric comments.
+Use as many short sentences as the causal explanation needs. Two sentences are
+enough only when they answer what happened, why it happened, and why the rubric
+decision follows. A complex defect may use up to eight short sentences and
+three evidence bullets. Each block must make sense by itself to a reviewer who
+has not read the evidence first or read the other rubric comments.
 
 Write like a 15-year-old explaining the check to a friend. Use daily English and
 short words. Go straight to the point. Sentence fragments are fine when the
@@ -381,7 +433,10 @@ reason leaves out.
 Before saving a block, read it once as a comment written by a teammate. Rewrite
 it if it sounds like a template, uses words people do not use in daily work,
 repeats the verdict, or makes the reader inspect another file just to learn what
-happened. Keep technical names when they matter. Explain them in plain words.
+happened. Also rewrite it if a newcomer could reasonably ask "what crash?",
+"which fallback?", "what was selected?", "why is that a false positive or false
+negative?", or "what is the intended challenge?" Keep technical names when they
+matter. Explain them in plain words.
 
 ### Keep collection details out of reviewer-facing prose
 
@@ -429,9 +484,10 @@ the current request, use that newer template.
 The complete rubric ledger is an audit artifact, not the final response. The
 final response starts with `Review:` and contains `TQA Status`, `Reviewer Agent
 Status`, `My Analysis`, and `Final Verdict`. A REJECT review includes the
-material failed rubric sections and ends with `Fix:`. An accepted review explains
-why any remaining coverage or verifier concerns are reservations rather than
-blockers.
+material failed rubric sections and ends with `Fix:`. Each material finding has
+its evidence followed immediately by its criteria trace. An accepted review
+explains why any remaining coverage or verifier concerns are reservations rather
+than blockers and traces those decisions to their controlling criteria text.
 
 Before delivery, verify that every portal id appears exactly once. Do this with
 the ids, not the generated list numbers. Verify that each `YES` maps to portal

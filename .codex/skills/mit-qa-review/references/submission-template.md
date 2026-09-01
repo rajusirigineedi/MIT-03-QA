@@ -29,9 +29,29 @@ the decision.
 - Every defect explanation must state the instruction rule, the exact verifier
   or implementation behavior, a concrete case, and the effect on correctness,
   fairness, coverage, or trial results.
+- Each explanation must make sense without reading its `Evidence` or `Criteria
+  trace`. Start with the task behavior being judged. Explain the cause and the
+  result in normal words. Use counts and rewards only after naming what caused
+  them.
+- Keep `Evidence` separate as proof, but repeat the key value, assertion, or
+  short code behavior in the explanation when the reader needs it to understand
+  the causal chain. Evidence must not supply context that the explanation left
+  out.
+- Put a `Criteria trace` immediately below the evidence for every material
+  finding. Name the exact source `[[criteria]]`, quote the smallest controlling
+  clause from its `text` or `guidance`, and explain how the evidence meets or
+  breaks that clause.
+- If no exact Harbor criterion exists, write `No exact Harbor criterion entry`
+  and use the exact controlling text from the matching GOLDEN rubric. Never
+  invent a source criterion name.
 - Do not use vague claims such as "tests are weak" or "instruction has one
   expectation but tests follow another." Name what is weak or different and
   show how it changes a result.
+- Do not leave review shorthand unexplained. Phrases such as "same crash",
+  "0/16", "old fallback", "selected defect", "verifier setup", "false
+  negative", and "unrelated to the intended challenge" are incomplete unless
+  the same paragraph names the actual code behavior, task requirement, concrete
+  result, and rubric effect.
 - End a REJECT review with a concrete `Fix:` paragraph. A SHIP review may state
   reservations in the final verdict when real non-blocking concerns remain.
 
@@ -59,6 +79,23 @@ trial exposed a shortcut, false positive, false negative, leak, or infra issue.>
 assertion. Explain the instruction rule, verifier behavior, and a concrete case.
 State whether an honest or cheat trial triggered it. Include a short code
 snippet when it makes the mismatch easier to understand.>
+
+Evidence:
+
+<Give the exact instruction, named test or assertion, concrete values, trial
+result, or useful code snippet for the reservation.>
+
+Criteria trace:
+
+Source criterion: <exact [[criteria]] name, or No exact Harbor criterion entry>
+
+Controlling text: "<smallest exact clause from text, guidance, or GOLDEN rubric>"
+
+Application: <Explain how the evidence meets or breaks that clause and why the
+reservation is non-blocking.>
+
+<Repeat the finding, Evidence, and Criteria trace as one unit for every other
+material reservation.>
 
 Final Verdict: Accept
 
@@ -92,6 +129,20 @@ My Analysis:
 real test, assertion, function, variable, or output value. Give a concrete input
 and expected-versus-actual result. State which trials were affected and whether
 the failure was clean, mixed with an agent error, or only manually reproduced.>
+
+Evidence:
+
+<Give the exact instruction, named test or assertion, concrete values, trial
+result, or useful code snippet that proves the finding.>
+
+Criteria trace:
+
+Source criterion: <exact [[criteria]] name, or No exact Harbor criterion entry>
+
+Controlling text: "<smallest exact clause from text, guidance, or GOLDEN rubric>"
+
+Application: <Explain how the evidence meets or breaks that clause and why it
+produces this PASS or FAIL decision.>
 
 <Repeat one section for each material failed rubric. Do not create numbered
 rubric headings. Do not repeat the same generic paragraph. Explain how the same

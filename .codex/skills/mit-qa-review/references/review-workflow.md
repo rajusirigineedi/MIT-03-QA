@@ -132,18 +132,31 @@ portal PASS or FAIL count.
 TQA is a strong first reviewer. Treat its work as useful, but still check it
 against the task. Do not try to find a new failure for every TQA `PASS`.
 
-Use a deep check for:
+Use a deep check only for:
 
-- every TQA `FAIL`, `LOW`, `MOD`, or other non-passing result;
-- every high-impact rubric listed below, even when TQA passed it;
-- a concrete concern from the Reviewer Agent;
-- oracle, no-op, reward, test, or trajectory evidence that conflicts with TQA;
-- any issue that may change SHIP to REJECT.
+- every strict rubric listed below, even when TQA passed it;
+- a TQA `FAIL`, `LOW`, `MOD`, or other non-passing result on a strict rubric;
+- a concrete Reviewer Agent concern about a strict rubric;
+- oracle, reward, test, or trajectory evidence that directly conflicts with a
+  strict rubric finding;
+- one clear catastrophic blocker outside the strict set, only when it makes the
+  task ungradeable or unsafe and belongs directly under that rubric.
 
-Use a light check for an ordinary TQA `PASS` when no evidence points to a
-problem. Confirm the main requirement from the task files. Keep the pass when it
-holds. Do not reject it for small wording, grammar, layout, structure, taxonomy,
-schema style, or version choices that do not change behavior or fairness.
+Use a light and loose check for every non-strict rubric, including a non-passing
+TQA result. Confirm only the main claim from the most direct task evidence, then
+stay in sync with TQA when the main point holds. Do not search for a better
+reason or a new defect. Keep an ordinary TQA `PASS` unless direct, high-confidence
+evidence proves that exact rubric materially wrong. Do not reject it for small
+wording, grammar, layout, structure, taxonomy, schema style, hardening
+preferences, theoretical exploits, or version choices that do not change the
+rubric's real outcome.
+
+For non-strict rubrics, prefer a short reason and `No fix needed`. A task can
+have a real defect without every nearby rubric failing. Record the defect once
+under the best-matching strict rubric. Do not copy it into solvability,
+reliability, structure, documentation, metadata, anti-cheat, and failure
+attribution unless each rubric has separate direct evidence and the issue is a
+catastrophic blocker under that exact bar.
 
 A task does not need 100% perfection. Ask whether the task gives a capable
 agent enough information and whether the verifier grades the required behavior.
@@ -231,7 +244,7 @@ For each distinct failure, record:
 A repeated failure shows a stable condition. It does not establish whether the
 condition is fair. The visibility and contract checks decide that.
 
-## 6. Give extra attention to high-impact rubrics
+## 6. Strict rubric set
 
 These need a deeper check because one real issue can affect the final decision
 or several related rubrics.
@@ -245,12 +258,12 @@ or several related rubrics.
 | Reward File Written Correctly (`reward_file_correct`) | The reward must be written during verification and match the real test result. It must not hide a timeout or harness crash. |
 | No False Negatives (`no_false_negatives`) | A correct solution must not fail because of a hidden rule, brittle check, or spec and test mismatch. Use the assertion, instruction, test code, and trajectory. |
 | No False Positives (`no_false_positives`) | A wrong solution must not pass because a check is missing or weak. Confirm the path in code or a trajectory. |
-| Task Specification (`task_specification`) | The task contract must be enough for a capable agent. Tests cannot add hidden conventions. |
 | Difficulty Crux (`difficulty_crux`) | For a graded honest attempt, fail only when a substantively working solution misses by a small margin and the threshold, not the conceptual work, causes the failure. An infrastructure error is PASS, or NOT_APPLICABLE when it happens before the agent engages and leaves too little evidence. Put the infrastructure defect under the rubric it actually breaks. |
 | Near Misses (`near_misses`) and Non-Clerical Difficulty (`non_clericalness`) | Decide whether almost-correct work failed for a real skill gap or a minor format issue. The main challenge should still need reasoning. |
 
-If one of these fails, check whether the same root cause affects another one.
-Do not copy the same failure into unrelated rubrics.
+If one of these fails, check only closely linked rubrics inside this strict set.
+Do not copy the same failure into non-strict rubrics just because the topics are
+near each other.
 
 ### False positives and false negatives
 
@@ -310,6 +323,21 @@ evidence shows a real defect under that exact rubric. A preference is not proof.
 A harmless issue is not a blocker. Structure and taxonomy checks should fail
 only when the real required structure or meaning is wrong, not because another
 layout or label would look nicer.
+
+For every rubric outside the strict set, apply these defaults:
+
+- Match TQA's label and mark it valid when its main point is reasonable.
+- Keep a TQA `PASS` even when its reason misses a detail, uses a weaker example,
+  or could be written better.
+- Do not turn a static possibility into a failure without an observed task or
+  trial effect.
+- Do not require best-practice hardening beyond the rubric's plain bar.
+- Do not repeat one task defect as several non-strict failures.
+- Overturn a non-strict TQA `PASS` only for a direct, high-confidence,
+  catastrophic defect that independently makes that exact rubric false.
+
+The strict rubric set does not use these shortcuts. Review its instruction,
+test, assertion, result, and trial evidence in full.
 
 Use solve rate and runtime only where the rubric calls for them. Runtime belongs
 to reasonable-time and timeout checks. Honest failure patterns can inform the
@@ -459,27 +487,41 @@ Save the complete review to:
 code-review/out/<task>.human-review.md
 ```
 
-Then recheck every TQA non-passing result, every case where the review overturns
-a TQA `PASS`, and every task blocker. Confirm the rubric bar, evidence, portal
-mapping, solve-time visibility, and fix. Save those blocks, without duplicates,
-to:
+Then recheck every strict-rubric non-passing result, every case where the review
+overturns a TQA `PASS`, and every task blocker. A non-strict TQA non-passing
+result does not need a deep second pass unless the review disputes it or it is a
+real ship blocker. Confirm the rubric bar, evidence, portal mapping, solve-time
+visibility, and fix. Save those blocks, without duplicates, to:
 
 ```text
 code-review/out/<task>.human-review-2.md
 ```
 
-Many `NO` decisions in one task are unusual. If they start to pile up, check
-whether the review used the portal mapping backwards, applied a stricter rule
-than the rubric, treated weak wording as a wrong verdict, or repeated one issue
-across unrelated rubrics. There is no fixed maximum and no target count. Keep
-every genuine failure, but each one must stand on its own clear evidence and
-real impact.
+Many `NO` decisions in one task are unusual. More than a small handful is a
+strong sign that the review became too strict or cascaded one issue. Recheck the
+portal mapping, restore ordinary non-strict findings to TQA's result when their
+main point holds, and remove repeated failures. There is no numeric cap, but a
+large pile of non-strict `NO` decisions needs clear separate catastrophic
+evidence for each one.
 
 Read `submission-template.md`. Assemble the final user-facing review in its
 SHIP or REJECT format, chosen from the independent task assessment. This is a
 standing template, so the review must be ready to paste even when the current
 request does not repeat a template. If the user supplied a newer template in
 the current request, use that newer template.
+
+After assembling it, append the complete submit-ready review under a
+`# Final submit-ready review` heading at the end of both files:
+
+```text
+code-review/out/<task>.human-review.md
+code-review/out/<task>.human-review-2.md
+```
+
+The embedded review must be complete in each file. Do not replace it with a
+link or a note pointing to the chat or another file. A separate
+`code-review/out/<task>.submit-ready.md` may also be saved for convenience,
+but it does not replace the two required embedded copies.
 
 The complete rubric ledger is an audit artifact, not the final response. The
 final response starts with `Review:` and contains `TQA Status`, `Reviewer Agent

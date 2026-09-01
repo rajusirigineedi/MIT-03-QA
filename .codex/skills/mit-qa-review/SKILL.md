@@ -7,11 +7,13 @@ description: Review or re-review Terminal Bench 3.0 TQA findings against the rub
 
 Review TQA fairly. Do not start a new fault hunt.
 
-TQA is already a strong reviewer. Most normal TQA `PASS` findings should stay
-valid after a quick evidence check. Spend the deeper review time on TQA
-non-passing findings, the Reviewer Agent's real concerns, and the high-impact
-rubrics below. Do not turn small style, structure, taxonomy, wording, or format
-preferences into failures when the task still meets the real requirement.
+TQA is already a strong reviewer. Keep ordinary rubrics in sync with TQA after
+a short sanity check. Do not search for new faults outside the strict rubric
+set below. Most non-strict TQA `PASS` findings should remain `PASS`, and most
+non-strict TQA reasons should be treated as good enough when their main point
+holds. Do not turn style, structure, taxonomy, wording, format, version, or
+minor setup preferences into failures when the task still meets the real
+requirement.
 
 The task does not need to be perfect. Judge whether a capable agent can do the
 work and whether the verifier grades it fairly. Do not require a level of detail
@@ -29,13 +31,20 @@ An invalid TQA `PASS` receives portal `FAIL`. Final SHIP or REJECT depends on th
 task evidence, not the number of TQA-validity marks.
 
 Mark TQA invalid only when primary task evidence clearly proves that its label
-or main reason is wrong and the mistake matters. Small wording problems, a
-different explanation, or an edge case that never appears in the task or trials
-are not enough.
+or main reason is wrong and the mistake matters. For a non-strict rubric, the
+bar is higher: keep TQA's finding unless the defect is direct, high confidence,
+and independently changes that exact rubric. Small wording problems, a
+different explanation, a missing detail, a theoretical exploit, or an edge case
+that never appears in the task or trials are not enough.
 
-## Main review focus
+Do not cascade one defect across loose rubrics. Put it under the one strict
+rubric it directly affects, or under one non-strict rubric only when the defect
+is catastrophic and belongs there, such as an oracle that cannot run or clear
+unsafe code. Do not use the same root cause to create a long list of failures.
 
-Give extra attention to these rubric names and portal ids:
+## Strict review set
+
+Only these rubric names and portal ids receive a strict, deep review:
 
 - Core Challenge is the Actual Problem (`core_challenge_is_problem`)
 - Tests Align with the Instruction (`tests_align_instruction`)
@@ -44,9 +53,23 @@ Give extra attention to these rubric names and portal ids:
 - Reward File Written Correctly (`reward_file_correct`)
 - No False Negatives (`no_false_negatives`)
 - No False Positives (`no_false_positives`)
-- Task Specification (`task_specification`)
 - Difficulty Crux (`difficulty_crux`)
 - Near Misses (`near_misses`) and Non-Clerical Difficulty (`non_clericalness`)
+
+For every other rubric, use a loose check:
+
+- Start from TQA's result and try to keep it.
+- Check only the main claim and any direct evidence already in front of you.
+- Do not open a new fault hunt, invent edge cases, or demand ideal hardening.
+- Do not overturn a TQA `PASS` for a possible, theoretical, stylistic, or
+  non-observed concern.
+- If TQA marked a non-strict rubric non-passing, verify only its cited reason.
+  Do not expand it into more findings.
+- Prefer `PASS` for the independent assessment when the real rubric goal is
+  met, even if the task is not perfect.
+
+The strict rubric set keeps its existing evidence and reasoning standard. Do
+not loosen those checks.
 
 Check a possible false positive or false negative using the task contract, the
 exact test or assertion, and the observed trajectory together. The test alone
@@ -186,6 +209,10 @@ sound polished, legal, academic, or like a fixed template.
 - Do not infer what an agent did when the prepared evidence does not show it.
 - Save the complete review and the second-pass review under
   `code-review/out` as described in the workflow.
+- Append the full submit-ready final review to both `<task>.human-review.md`
+  and `<task>.human-review-2.md`. Do not leave the final review only in the
+  chat or only in a separate submit-ready file. A separate
+  `<task>.submit-ready.md` may also be saved as a convenience copy.
 
 Write plain Markdown. The final user-facing review must follow
 `references/submission-template.md` and be ready to paste into the review
